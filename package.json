@@ -9,7 +9,7 @@
   "scripts": {
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
-    "lint": "nx run-many -t lint && node tools/check-boundaries.mjs",
+    "lint": "nx run-many -t lint && node tools/check-boundaries.mjs && node tools/check-docs.mjs",
     "typecheck": "tsc -b",
     "e2e": "playwright test",
     "pkgcheck": "node tools/check-packages.mjs",

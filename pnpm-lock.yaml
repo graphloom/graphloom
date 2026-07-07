@@ -80,7 +80,11 @@ importers:
 
   packages/core: {}
 
-  packages/history: {}
+  packages/history:
+    dependencies:
+      '@graphloom/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/interaction: {}
 
