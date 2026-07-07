@@ -12,12 +12,15 @@
     "lint": "nx run-many -t lint && node tools/check-boundaries.mjs && node tools/check-docs.mjs",
     "typecheck": "tsc -b",
     "e2e": "playwright test",
+    "e2e:a11y": "playwright test e2e/a11y.spec.ts",
+    "bench": "pnpm --filter @graphloom/rendering exec vitest run src/perf.smoke.test.ts",
     "pkgcheck": "node tools/check-packages.mjs",
     "format": "prettier --write .",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
+    "@axe-core/playwright": "^4.12.1",
     "@changesets/cli": "^2.31.0",
     "@commitlint/cli": "^21.2.0",
     "@commitlint/config-conventional": "^21.2.0",
