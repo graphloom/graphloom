@@ -23,9 +23,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean",
+    "build": "tsup",
     "test": "vitest run --coverage",
     "lint": "eslint src",
     "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@graphloom/core": "workspace:*",
+    "d3-quadtree": "^3.0.1"
   }
 }

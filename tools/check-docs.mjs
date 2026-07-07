@@ -6,7 +6,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const PACKAGES = ['packages/core/src', 'packages/history/src'];
+const PACKAGES = ['packages/core/src', 'packages/history/src', 'packages/rendering/src'];
 const DECL = /^export\s+(?:abstract\s+)?(?:const|function|class|interface|enum|type)\s+\w+/;
 
 let failures = 0;

@@ -53,10 +53,16 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The examples app imports built package dists (P3-T10).
+      - run: pnpm exec nx run-many -t build
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm e2e
+      # On failure the report + test-results carry actual screenshots — used
+      # to bootstrap/refresh visual baselines (download, review, commit).
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/

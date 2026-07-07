@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "dependencies": {
+    "@graphloom/core": "workspace:*",
+    "@graphloom/rendering": "workspace:*"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
