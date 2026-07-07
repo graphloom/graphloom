@@ -11,8 +11,12 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     // ponytail: local-only escape hatch — this network blocks Playwright's
     // browser CDN, so local smokes use the OS-installed Edge
-    // (`pnpm e2e --project=msedge`); CI runs the three real engines above.
-    { name: 'msedge', use: { ...devices['Desktop Edge'], channel: 'msedge' } },
+    // (`pnpm e2e --project=msedge`); CI runs only the three real engines
+    // above (ubuntu runners ship Edge too, which would demand a fourth,
+    // redundant ≈Chromium visual baseline).
+    ...(process.env.CI
+      ? []
+      : [{ name: 'msedge', use: { ...devices['Desktop Edge'], channel: 'msedge' } }]),
   ],
   webServer: {
     command: 'pnpm --filter examples dev --port 4173 --strictPort',
