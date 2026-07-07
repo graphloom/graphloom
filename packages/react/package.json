@@ -1,0 +1,34 @@
+{
+  "name": "@graphloom/react",
+  "version": "0.0.1",
+  "description": "GraphLoom react package",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/graphloom/graphloom.git",
+    "directory": "packages/react"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean",
+    "test": "vitest run --coverage",
+    "lint": "eslint src",
+    "typecheck": "tsc -b"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  }
+}

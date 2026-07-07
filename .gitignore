@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.nx/
+*.tsbuildinfo
+playwright-report/
+test-results/
+.DS_Store
+Thumbs.db

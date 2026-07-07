@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/rendering" },
+    { "path": "packages/interaction" },
+    { "path": "packages/layout" },
+    { "path": "packages/history" },
+    { "path": "packages/clipboard" },
+    { "path": "packages/serialization" },
+    { "path": "packages/themes" },
+    { "path": "packages/react" },
+    { "path": "apps/examples" }
+  ]
+}

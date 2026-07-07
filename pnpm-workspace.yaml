@@ -1,0 +1,9 @@
+packages:
+  - packages/*
+  - packages/plugins/*
+  - apps/*
+overrides:
+  '@types/node': ^24.13.2
+allowBuilds:
+  esbuild: true
+  nx: true

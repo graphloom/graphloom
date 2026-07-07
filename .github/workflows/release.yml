@@ -1,0 +1,32 @@
+# Changesets release pipeline — dry-run mode until P15 (no publish command
+# configured; the action only maintains the "Version Packages" PR).
+# P15-T02 adds npm provenance publishing with a dedicated token.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create or update Version Packages PR
+        uses: changesets/action@v1
+        with:
+          version: pnpm exec changeset version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
