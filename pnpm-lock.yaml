@@ -95,7 +95,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/rendering
 
-  packages/clipboard: {}
+  packages/clipboard:
+    dependencies:
+      '@graphloom/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@graphloom/history':
+        specifier: workspace:*
+        version: link:../history
 
   packages/core: {}
 
@@ -105,7 +113,21 @@ importers:
         specifier: workspace:*
         version: link:../core
 
-  packages/interaction: {}
+  packages/interaction:
+    dependencies:
+      '@graphloom/core':
+        specifier: workspace:*
+        version: link:../core
+      '@graphloom/rendering':
+        specifier: workspace:*
+        version: link:../rendering
+    devDependencies:
+      '@graphloom/clipboard':
+        specifier: workspace:*
+        version: link:../clipboard
+      '@graphloom/history':
+        specifier: workspace:*
+        version: link:../history
 
   packages/layout: {}
 

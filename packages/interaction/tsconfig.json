@@ -2,9 +2,17 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist/types"
+    "outDir": "dist/types",
+    "paths": {
+      "@graphloom/core": ["../core/src/index.ts"],
+      "@graphloom/rendering": ["../rendering/src/index.ts"]
+    }
   },
   "include": [
     "src"
+  ],
+  "references": [
+    { "path": "../core" },
+    { "path": "../rendering" }
   ]
 }
