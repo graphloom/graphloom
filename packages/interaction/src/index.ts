@@ -65,6 +65,7 @@ export {
   type InteractionEngineDeps,
   type InteractionEngineOptions,
 } from './engine.js';
+export { attachInteraction, type AttachOptions } from './dom.js';
 
 /** This package's name (kept for the P1 smoke test and tree-shake probe). */
 export const PACKAGE_NAME = '@graphloom/interaction';

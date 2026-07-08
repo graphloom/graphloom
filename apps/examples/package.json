@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
+    "@graphloom/clipboard": "workspace:*",
     "@graphloom/core": "workspace:*",
+    "@graphloom/history": "workspace:*",
+    "@graphloom/interaction": "workspace:*",
     "@graphloom/rendering": "workspace:*"
   },
   "scripts": {

@@ -88,9 +88,18 @@ importers:
 
   apps/examples:
     dependencies:
+      '@graphloom/clipboard':
+        specifier: workspace:*
+        version: link:../../packages/clipboard
       '@graphloom/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@graphloom/history':
+        specifier: workspace:*
+        version: link:../../packages/history
+      '@graphloom/interaction':
+        specifier: workspace:*
+        version: link:../../packages/interaction
       '@graphloom/rendering':
         specifier: workspace:*
         version: link:../../packages/rendering

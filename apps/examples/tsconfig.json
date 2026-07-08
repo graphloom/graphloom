@@ -4,7 +4,10 @@
     "rootDir": "src",
     "outDir": "dist/types",
     "paths": {
+      "@graphloom/clipboard": ["../../packages/clipboard/src/index.ts"],
       "@graphloom/core": ["../../packages/core/src/index.ts"],
+      "@graphloom/history": ["../../packages/history/src/index.ts"],
+      "@graphloom/interaction": ["../../packages/interaction/src/index.ts"],
       "@graphloom/rendering": ["../../packages/rendering/src/index.ts"]
     }
   },
@@ -12,7 +15,10 @@
     "src"
   ],
   "references": [
+    { "path": "../../packages/clipboard" },
     { "path": "../../packages/core" },
+    { "path": "../../packages/history" },
+    { "path": "../../packages/interaction" },
     { "path": "../../packages/rendering" }
   ]
 }
