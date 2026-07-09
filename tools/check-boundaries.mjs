@@ -47,6 +47,12 @@ const cases = [
     code: "import 'react';\n",
     expectRule: null,
   },
+  {
+    name: '@angular/* import allowed in the angular wrapper (control)',
+    filePath: 'packages/angular/src/fixture.ts',
+    code: "import '@angular/core';\n",
+    expectRule: null,
+  },
 ];
 
 const eslint = new ESLint();

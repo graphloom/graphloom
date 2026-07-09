@@ -9,6 +9,7 @@
     { "path": "packages/clipboard" },
     { "path": "packages/serialization" },
     { "path": "packages/themes" },
+    { "path": "packages/angular" },
     { "path": "packages/react" },
     { "path": "apps/examples" }
   ]

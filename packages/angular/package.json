@@ -1,0 +1,43 @@
+{
+  "name": "@graphloom/angular",
+  "version": "0.0.1",
+  "description": "GraphLoom angular package",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/graphloom/graphloom.git",
+    "directory": "packages/angular"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/types/graphloom-angular.d.ts",
+      "default": "./dist/fesm2022/graphloom-angular.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json",
+    "test": "vitest run --coverage",
+    "lint": "eslint src",
+    "typecheck": "tsc -b"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=22",
+    "@angular/core": ">=22"
+  },
+  "dependencies": {
+    "@graphloom/clipboard": "workspace:*",
+    "@graphloom/core": "workspace:*",
+    "@graphloom/history": "workspace:*",
+    "@graphloom/interaction": "workspace:*",
+    "@graphloom/rendering": "workspace:*",
+    "tslib": "^2.8.1"
+  }
+}
