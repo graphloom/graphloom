@@ -137,6 +137,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/rendering
 
+  apps/examples-angular:
+    dependencies:
+      '@graphloom/angular':
+        specifier: workspace:*
+        version: link:../../packages/angular
+      '@graphloom/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@graphloom/interaction':
+        specifier: workspace:*
+        version: link:../../packages/interaction
+
   packages/angular:
     dependencies:
       '@angular/common':

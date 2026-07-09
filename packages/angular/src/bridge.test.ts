@@ -42,12 +42,16 @@ describe('createGraphSignals (P5-T02)', () => {
     expect(signals.edges()).toBe(edgesBefore); // edges untouched (same reference)
   });
 
-  it('refreshes edges and groups when a node removal cascades', () => {
-    const signals = createGraphSignals({ editor });
+  it('refreshes edges and groups when a node removal cascades — and on undo', () => {
+    const history = createHistory(editor);
+    const signals = createGraphSignals({ editor, history });
     const edgesBefore = signals.edges();
     editor.execute(commands.nodeRemove('a')); // cascades edge ab
     expect(signals.edges()).not.toBe(edgesBefore);
     expect(signals.edges()).toEqual([]);
+    history.undo(); // replays node.restore — must refresh edges too
+    expect(signals.nodes().map((n) => n.id).sort()).toEqual(['a', 'b']);
+    expect(signals.edges().map((e) => e.id)).toEqual(['ab']);
   });
 
   it('batches per transaction: one effect run per commit', () => {

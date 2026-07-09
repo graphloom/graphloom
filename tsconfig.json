@@ -11,6 +11,7 @@
     { "path": "packages/themes" },
     { "path": "packages/angular" },
     { "path": "packages/react" },
-    { "path": "apps/examples" }
+    { "path": "apps/examples" },
+    { "path": "apps/examples-angular" }
   ]
 }

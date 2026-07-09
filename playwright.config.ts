@@ -18,9 +18,19 @@ export default defineConfig({
       ? []
       : [{ name: 'msedge', use: { ...devices['Desktop Edge'], channel: 'msedge' } }]),
   ],
-  webServer: {
-    command: 'pnpm --filter examples dev --port 4173 --strictPort',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'pnpm --filter examples dev --port 4173 --strictPort',
+      url: 'http://localhost:4173',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      // Built + prerendered (not a dev server): the hydration smoke needs
+      // real SSR HTML on the wire.
+      command: 'pnpm --filter examples-angular serve',
+      url: 'http://localhost:4301',
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+    },
+  ],
 });

@@ -75,8 +75,11 @@ export function createGraphSignals(deps: GraphSignalsDeps): GraphSignals {
         const { type } = command;
         if (type.startsWith('node.')) {
           touchedNodes = true;
-          // node.remove cascades incident edges and group memberships.
-          if (type === 'node.remove') touchedEdges = touchedGroups = true;
+          // node.remove cascades incident edges and group memberships, and
+          // node.restore (its inverse) puts them back.
+          if (type === 'node.remove' || type === 'node.restore') {
+            touchedEdges = touchedGroups = true;
+          }
         } else if (type.startsWith('edge.')) {
           touchedEdges = true;
         } else if (type.startsWith('group.')) {
