@@ -45,8 +45,10 @@ test('SSR + hydration: server HTML is real, hydration is warning-free', async ({
   });
   page.on('pageerror', (error) => problems.push(String(error)));
 
-  const response = await page.goto(URL);
-  const raw = (await response!.text()).toLowerCase();
+  // page.goto's response can be a redirect (Firefox: body unavailable) —
+  // fetch the wire HTML through the request context, which follows redirects.
+  const raw = (await (await page.request.get(URL)).text()).toLowerCase();
+  await page.goto(URL);
   expect(raw).toContain('ngh='); // Angular hydration annotations in the wire HTML
   expect(raw).toContain('graphloom-placeholder'); // server placeholder…
   expect(raw).not.toContain('<svg'); // …and no renderer output on the server
