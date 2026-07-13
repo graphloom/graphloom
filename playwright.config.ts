@@ -32,5 +32,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
     },
+    {
+      // Same deal for the React demo (P6): prerendered SSR output.
+      command: 'pnpm --filter examples-react serve',
+      url: 'http://localhost:4302',
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+    },
   ],
 });
