@@ -2,9 +2,24 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist/types"
+    "outDir": "dist/types",
+    "jsx": "react-jsx",
+    "paths": {
+      "@graphloom/clipboard": ["../clipboard/src/index.ts"],
+      "@graphloom/core": ["../core/src/index.ts"],
+      "@graphloom/history": ["../history/src/index.ts"],
+      "@graphloom/interaction": ["../interaction/src/index.ts"],
+      "@graphloom/rendering": ["../rendering/src/index.ts"]
+    }
   },
   "include": [
     "src"
+  ],
+  "references": [
+    { "path": "../clipboard" },
+    { "path": "../core" },
+    { "path": "../history" },
+    { "path": "../interaction" },
+    { "path": "../rendering" }
   ]
 }

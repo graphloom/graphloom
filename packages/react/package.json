@@ -23,12 +23,19 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean",
+    "build": "tsup",
     "test": "vitest run --coverage",
     "lint": "eslint src",
     "typecheck": "tsc -b"
   },
   "peerDependencies": {
     "react": ">=19"
+  },
+  "dependencies": {
+    "@graphloom/clipboard": "workspace:*",
+    "@graphloom/core": "workspace:*",
+    "@graphloom/history": "workspace:*",
+    "@graphloom/interaction": "workspace:*",
+    "@graphloom/rendering": "workspace:*"
   }
 }
