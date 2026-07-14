@@ -154,6 +154,9 @@ importers:
       '@graphloom/rendering':
         specifier: workspace:*
         version: link:../../packages/rendering
+      '@graphloom/themes':
+        specifier: workspace:*
+        version: link:../../packages/themes
 
   apps/examples-angular:
     dependencies:
