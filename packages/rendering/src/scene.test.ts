@@ -55,12 +55,15 @@ describe('SceneGraph derivation', () => {
     const scene = new SceneGraph(editor);
     addNode(editor, 'a', 0, 0, { ports: [{ id: 'out', side: 'right', offset: 0.5 }] });
     addNode(editor, 'b', 300, 100);
+    // Distinct pair for the orthogonal edge — a second a→b edge would fan
+    // (P7-T05), covered by the routing tests.
+    addNode(editor, 'c', 300, 200);
     editor.execute(commands.edgeAdd({ id: 'e1', source: 'a', target: 'b' }));
     editor.execute(
       commands.edgeAdd({
         id: 'e2',
         source: 'a',
-        target: 'b',
+        target: 'c',
         sourcePort: 'out',
         routing: 'orthogonal',
         labels: [{ text: 'mid', position: 0.5 }],
@@ -84,8 +87,8 @@ describe('SceneGraph derivation', () => {
       points: [
         { x: 100, y: 20 }, // right side, offset 0.5
         { x: 225, y: 20 },
-        { x: 225, y: 120 },
-        { x: 350, y: 120 },
+        { x: 225, y: 220 },
+        { x: 350, y: 220 },
       ],
     });
     expect(scene.get('label:edge:e2:0')).toMatchObject({ kind: 'text', text: 'mid' });
@@ -140,7 +143,15 @@ describe('SceneGraph derivation', () => {
 
     editor.execute(commands.groupCollapse('g'));
     const ids = scene.items().map((i) => i.id);
-    expect(ids).toEqual(['node:c', 'group:g', 'label:group:g']);
+    // Proxy + label + the member-count badge (P7-T08).
+    expect(ids).toEqual([
+      'node:c',
+      'group:g',
+      'label:group:g',
+      'badge:group:g',
+      'badge:group:g:count',
+    ]);
+    expect(scene.get('badge:group:g:count')).toMatchObject({ kind: 'text', text: '2' });
     // Proxy covers the union of members: a(0,0,100,40) ∪ b(200,100,100,40).
     expect(scene.get('group:g')).toMatchObject({
       kind: 'shape',

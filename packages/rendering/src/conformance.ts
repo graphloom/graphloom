@@ -127,6 +127,83 @@ export const rendererConformanceChecks: readonly ConformanceCheck[] = [
     },
   },
   {
+    name: 'renders the full ShapeSpec vocabulary and hit-tests non-rect geometry (P7-T01)',
+    run(createRenderer) {
+      withPipeline(createRenderer, (host, editor) => {
+        editor.use({
+          id: 'conformance-shapes',
+          version: '0.0.0',
+          install(ctx) {
+            // Every spec primitive kind in one descriptor (P7-T01 acceptance:
+            // conformance extended to every spec element).
+            ctx.shapes.register('vocabulary', (node) => ({
+              role: 'node',
+              label: node.id,
+              children: [
+                { kind: 'rect', x: 0, y: 0, width: 100, height: 100 },
+                { kind: 'roundRect', x: 10, y: 10, width: 20, height: 20, radius: 4 },
+                { kind: 'ellipse', cx: 70, cy: 20, rx: 10, ry: 10 },
+                {
+                  kind: 'polygon',
+                  points: [
+                    { x: 50, y: 60 },
+                    { x: 90, y: 95 },
+                    { x: 10, y: 95 },
+                  ],
+                },
+                {
+                  kind: 'path',
+                  segments: [
+                    { kind: 'M', to: { x: 10, y: 40 } },
+                    { kind: 'Q', c: { x: 30, y: 30 }, to: { x: 50, y: 40 } },
+                    { kind: 'C', c1: { x: 60, y: 45 }, c2: { x: 80, y: 45 }, to: { x: 90, y: 40 } },
+                  ],
+                  style: { fill: 'none' },
+                },
+                { kind: 'text', text: 'v', x: 50, y: 30 },
+                {
+                  kind: 'image',
+                  href: 'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E',
+                  x: 60,
+                  y: 60,
+                  width: 16,
+                  height: 16,
+                },
+                { kind: 'icon', icon: 'gear', x: 20, y: 60, size: 16 },
+                {
+                  kind: 'group',
+                  translate: { x: 40, y: 0 },
+                  children: [{ kind: 'rect', x: 0, y: 0, width: 8, height: 8 }],
+                },
+              ],
+              anchors: [{ id: 'apex', position: { x: 50, y: 60 } }],
+            }));
+          },
+        });
+        editor.execute(
+          commands.nodeAdd({
+            id: 'v',
+            type: 'vocabulary',
+            position: { x: 500, y: 400 },
+            size: { width: 100, height: 100 },
+            ports: [{ id: 'apex', side: 'top', visibility: 'always' }],
+          }),
+        );
+        host.renderNow();
+        // Inside the polygon (world 550,485) → some item of node v.
+        const polygonHit = host.renderer.hitTest({ x: 550, y: 485 });
+        check(polygonHit !== null && polygonHit.startsWith('node:v'), 'polygon interior should hit');
+        // Outside the polygon but inside its bounding box → the base rect
+        // (item node:v), never the polygon item (node:v:3).
+        const offPolygon = host.renderer.hitTest({ x: 515, y: 465 });
+        check(offPolygon === 'node:v', 'polygon bounding box must not hit the polygon itself');
+        // The always-visible port at the spec anchor (world 550,460).
+        const portHit = host.renderer.hitTest({ x: 550, y: 460 });
+        check(portHit === 'port:node:v:apex', `port dot should hit (got ${String(portHit)})`);
+      });
+    },
+  },
+  {
     name: 'measureText returns sane, monotonic sizes',
     run(createRenderer) {
       const renderer = createRenderer();

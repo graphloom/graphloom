@@ -3,6 +3,26 @@ import { commands } from './builtins.js';
 import { createGraph } from './editor.js';
 import { CommandValidationError } from './errors.js';
 import type { GraphPlugin } from './plugin.js';
+import type { ShapeDescriptor } from './shape.js';
+
+const rectDescriptor: ShapeDescriptor = (node) => ({
+  role: 'node',
+  label: node.id,
+  children: [{ kind: 'rect', x: 0, y: 0, width: node.size.width, height: node.size.height }],
+});
+const circleDescriptor: ShapeDescriptor = (node) => ({
+  role: 'node',
+  label: node.id,
+  children: [
+    {
+      kind: 'ellipse',
+      cx: node.size.width / 2,
+      cy: node.size.height / 2,
+      rx: node.size.width / 2,
+      ry: node.size.height / 2,
+    },
+  ],
+});
 
 /** The P2-T08 acceptance plugin: registers a custom command and a validator. */
 function makeTestPlugin(log: string[]): GraphPlugin {
@@ -37,7 +57,13 @@ function makeTestPlugin(log: string[]): GraphPlugin {
         title: 'Summarize diagram',
         description: 'Produce a text summary of the current graph.',
       });
-      ctx.shapes.register('sticky-note', { kind: 'rect', rounded: true });
+      ctx.shapes.register('sticky-note', (node) => ({
+        role: 'node',
+        label: node.id,
+        children: [
+          { kind: 'rect', x: 0, y: 0, width: node.size.width, height: node.size.height },
+        ],
+      }));
     },
     uninstall() {
       log.push('uninstalled');
@@ -159,14 +185,14 @@ it('registry keys are exclusive and unregister works mid-lifetime', () => {
     id: 'p1',
     version: '0',
     install(ctx) {
-      ctx.shapes.register('shape', { kind: 'rect' });
-      expect(() => ctx.shapes.register('shape', { kind: 'circle' })).toThrow(
+      ctx.shapes.register('shape', rectDescriptor);
+      expect(() => ctx.shapes.register('shape', circleDescriptor)).toThrow(
         /already registered/,
       );
       expect(ctx.shapes.keys()).toEqual(['shape']);
       ctx.shapes.unregister('shape');
-      ctx.shapes.register('shape', { kind: 'circle' });
+      ctx.shapes.register('shape', circleDescriptor);
     },
   });
-  expect(editor.registries.shapes.get('shape')).toEqual({ kind: 'circle' });
+  expect(editor.registries.shapes.get('shape')).toBe(circleDescriptor);
 });

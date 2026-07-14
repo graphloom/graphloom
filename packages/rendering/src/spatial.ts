@@ -1,14 +1,19 @@
 import type { Point } from '@graphloom/core';
 import { quadtree, type Quadtree, type QuadtreeLeaf } from 'd3-quadtree';
 import {
+  applyToPoint,
   distanceToPolyline,
   flattenCubicBezier,
   inflateRect,
   pointInEllipse,
+  pointInPolygon,
   pointInRotatedRect,
+  rectContainsPoint,
   rectsIntersect,
+  rotationAbout,
   type Rect,
 } from './geometry.js';
+import { flattenSegments } from './spec.js';
 import { compareRenderItems, type RenderItem, type SceneGraph } from './scene.js';
 
 /** Options for {@link SpatialIndex} hit queries. */
@@ -22,31 +27,91 @@ export interface HitTestOptions {
   readonly filter?: (item: RenderItem) => boolean;
 }
 
-const polylineOf = (item: RenderItem & { kind: 'path' }): readonly Point[] =>
-  item.routing === 'bezier'
-    ? flattenCubicBezier(
-        item.points[0] as Point,
-        item.points[1] as Point,
-        item.points[2] as Point,
-        item.points[3] as Point,
-      )
-    : item.points;
+const polylineOf = (item: RenderItem & { kind: 'path' }): readonly Point[] => {
+  if (item.curve !== 'cubic') return item.points;
+  const flat: Point[] = [item.points[0] as Point];
+  for (let base = 0; base + 3 < item.points.length; base += 3) {
+    flat.push(
+      ...flattenCubicBezier(
+        item.points[base] as Point,
+        item.points[base + 1] as Point,
+        item.points[base + 2] as Point,
+        item.points[base + 3] as Point,
+      ).slice(1),
+    );
+  }
+  return flat;
+};
+
+/** Un-rotates a point into an item's local space (pivot-aware). */
+const unrotated = (point: Point, rect: Rect, rotation: number, pivot?: Point): Point => {
+  if (rotation % 360 === 0) return point;
+  const origin = pivot ?? { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  return applyToPoint(rotationAbout(-rotation, origin.x, origin.y), point);
+};
+
+/** True when the point is inside or within `slop` of any flattened subpath. */
+function hitPathGeometry(
+  point: Point,
+  subpaths: readonly (readonly Point[])[],
+  slop: number,
+  filled: boolean,
+): boolean {
+  for (const ring of subpaths) {
+    if (filled && pointInPolygon(point, ring)) return true;
+    if (distanceToPolyline(point, ring) <= slop) return true;
+  }
+  return false;
+}
 
 /** Precise, zoom-independent hit test for one render item (world coordinates). */
 export function hitTestItem(item: RenderItem, point: Point, tolerance = 0): boolean {
+  const slop = tolerance + item.style.strokeWidth / 2;
   switch (item.kind) {
     case 'shape': {
-      const rect = inflateRect(item.rect, tolerance + item.style.strokeWidth / 2);
-      return item.shape === 'ellipse'
-        ? pointInEllipse(point, rect, item.rotation)
-        : pointInRotatedRect(point, rect, item.rotation);
+      switch (item.shape) {
+        case 'ellipse': {
+          const local = unrotated(point, item.rect, item.rotation, item.pivot);
+          return pointInEllipse(local, inflateRect(item.rect, slop), 0);
+        }
+        case 'polygon':
+          return (
+            pointInPolygon(point, item.points ?? []) ||
+            (item.points !== undefined &&
+              item.points.length > 1 &&
+              distanceToPolyline(point, [...item.points, item.points[0] as Point]) <= slop)
+          );
+        case 'path':
+          return hitPathGeometry(
+            point,
+            flattenSegments(item.segments ?? []),
+            slop,
+            item.style.fill !== 'none',
+          );
+        default: {
+          // rect / roundRect — rounded corners hit as square corners.
+          // ponytail: corner error ≤ radius·(1−1/√2) ≈ 3px at radius 10;
+          // exact rounded-corner math only if picking ever feels wrong.
+          const local = unrotated(point, item.rect, item.rotation, item.pivot);
+          return rectContainsPoint(inflateRect(item.rect, slop), local);
+        }
+      }
     }
     case 'path':
-      return (
-        distanceToPolyline(point, polylineOf(item)) <= tolerance + item.style.strokeWidth / 2
-      );
+      return distanceToPolyline(point, polylineOf(item)) <= slop;
     case 'text':
       return pointInRotatedRect(point, inflateRect(item.bounds, tolerance), 0);
+    case 'image':
+    case 'icon': {
+      const local = unrotated(point, item.rect, item.rotation, item.pivot);
+      return rectContainsPoint(inflateRect(item.rect, tolerance), local);
+    }
+    case 'port':
+      return (
+        Math.hypot(point.x - item.center.x, point.y - item.center.y) <= item.radius + slop
+      );
+    case 'marker':
+      return rectContainsPoint(inflateRect(item.bounds, tolerance), point);
   }
 }
 

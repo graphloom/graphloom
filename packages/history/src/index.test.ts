@@ -167,3 +167,28 @@ it('undo/redo round-trips over a random-ish command sequence (P2-T06 fuzz)', () 
   }
   expect(history.redo()).toBe(false);
 });
+
+it('a label edit is one coalesced history entry (P7-T04 acceptance)', () => {
+  const { editor, history } = setup();
+  editor.execute(commands.nodeAdd({ id: 'n', data: { label: 'Old' } }));
+
+  // The P7-T04 editing contract: the core only raises the event; the host
+  // renders an input and commits keystrokes with a shared coalesceKey.
+  const requests: unknown[] = [];
+  editor.on('label.editRequested', (payload) => requests.push(payload));
+  editor.requestLabelEdit('node', 'n');
+  expect(requests).toEqual([{ target: 'node', id: 'n' }]);
+
+  for (const text of ['N', 'Ne', 'New']) {
+    editor.execute(commands.nodeUpdate('n', { data: { label: text } }), {
+      coalesceKey: 'label-edit:n',
+    });
+  }
+  expect(editor.graph.getNode('n')?.data['label']).toBe('New');
+
+  // One undo restores the pre-edit label: the whole edit was one entry.
+  expect(history.undo()).toBe(true);
+  expect(editor.graph.getNode('n')?.data['label']).toBe('Old');
+  expect(history.redo()).toBe(true);
+  expect(editor.graph.getNode('n')?.data['label']).toBe('New');
+});

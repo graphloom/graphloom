@@ -22,6 +22,7 @@ export default mergeConfig(
         '@graphloom/history': src('history'),
         '@graphloom/interaction': src('interaction'),
         '@graphloom/rendering': src('rendering'),
+        '@graphloom/themes': src('themes'),
       },
     },
   }),

@@ -16,6 +16,7 @@ export default mergeConfig(
         '@graphloom/core': src('core'),
         '@graphloom/history': src('history'),
         '@graphloom/rendering': src('rendering'),
+        '@graphloom/themes': src('themes'),
       },
     },
   }),

@@ -4,19 +4,41 @@
     "rootDir": "src",
     "outDir": "dist/types",
     "paths": {
-      "@graphloom/clipboard": ["../clipboard/src/index.ts"],
-      "@graphloom/core": ["../core/src/index.ts"],
-      "@graphloom/history": ["../history/src/index.ts"],
-      "@graphloom/rendering": ["../rendering/src/index.ts"]
+      "@graphloom/clipboard": [
+        "../clipboard/src/index.ts"
+      ],
+      "@graphloom/core": [
+        "../core/src/index.ts"
+      ],
+      "@graphloom/history": [
+        "../history/src/index.ts"
+      ],
+      "@graphloom/rendering": [
+        "../rendering/src/index.ts"
+      ],
+      "@graphloom/themes": [
+        "../themes/src/index.ts"
+      ]
     }
   },
   "include": [
     "src"
   ],
   "references": [
-    { "path": "../clipboard" },
-    { "path": "../core" },
-    { "path": "../history" },
-    { "path": "../rendering" }
+    {
+      "path": "../clipboard"
+    },
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../history"
+    },
+    {
+      "path": "../rendering"
+    },
+    {
+      "path": "../themes"
+    }
   ]
 }

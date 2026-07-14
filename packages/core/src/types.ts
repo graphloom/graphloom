@@ -31,6 +31,9 @@ export interface Viewport {
 /** Which side of a node a port sits on. */
 export type PortSide = 'top' | 'right' | 'bottom' | 'left';
 
+/** When a port is shown (P7-T03): on hover (default), always, or never. */
+export type PortVisibility = 'hover' | 'always' | 'never';
+
 /** A connection point on a node. */
 export interface Port {
   /** Unique within the owning node. */
@@ -39,6 +42,8 @@ export interface Port {
   readonly side: PortSide;
   /** Position along the side, 0..1 from the side's start. */
   readonly offset: number;
+  /** Visibility rule; absent means `hover` (P7-T03). */
+  readonly visibility?: PortVisibility;
   /** Opaque user data. */
   readonly data: JsonObject;
 }
@@ -64,8 +69,8 @@ export interface Node {
   readonly data: JsonObject;
 }
 
-/** How an edge is routed between its endpoints. */
-export type EdgeRouting = 'straight' | 'orthogonal' | 'bezier';
+/** How an edge is routed between its endpoints (`smooth` added in P7). */
+export type EdgeRouting = 'straight' | 'orthogonal' | 'bezier' | 'smooth';
 
 /** A text label positioned along an edge. */
 export interface EdgeLabel {

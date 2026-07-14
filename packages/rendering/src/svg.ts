@@ -1,4 +1,4 @@
-import type { Point, Size } from '@graphloom/core';
+import type { PathSegment, Point, Size } from '@graphloom/core';
 import type { SceneFrame } from './frame.js';
 import type { RenderItem, RenderItemId } from './scene.js';
 import { hitTestFrame, type Renderer } from './renderer.js';
@@ -44,11 +44,62 @@ export interface SvgRenderer extends Renderer {
 const pathData = (item: RenderItem & { kind: 'path' }): string => {
   const [first, ...rest] = item.points;
   if (!first) return '';
-  if (item.routing === 'bezier' && item.points.length === 4) {
-    const [c1, c2, to] = rest as [Point, Point, Point];
-    return `M ${first.x} ${first.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${to.x} ${to.y}`;
+  if (item.curve === 'cubic') {
+    let d = `M ${first.x} ${first.y}`;
+    for (let base = 1; base + 2 < item.points.length; base += 3) {
+      const [c1, c2, to] = [rest[base - 1], rest[base], rest[base + 1]] as [Point, Point, Point];
+      d += ` C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${to.x} ${to.y}`;
+    }
+    return d;
   }
   return `M ${first.x} ${first.y} ${rest.map((p) => `L ${p.x} ${p.y}`).join(' ')}`;
+};
+
+/** Serializes structured spec segments (P7-T01) into SVG path data. */
+const segmentData = (segments: readonly PathSegment[]): string =>
+  segments
+    .map((s) => {
+      switch (s.kind) {
+        case 'M':
+          return `M ${s.to.x} ${s.to.y}`;
+        case 'L':
+          return `L ${s.to.x} ${s.to.y}`;
+        case 'C':
+          return `C ${s.c1.x} ${s.c1.y}, ${s.c2.x} ${s.c2.y}, ${s.to.x} ${s.to.y}`;
+        case 'Q':
+          return `Q ${s.c.x} ${s.c.y}, ${s.to.x} ${s.to.y}`;
+        case 'Z':
+          return 'Z';
+      }
+    })
+    .join(' ');
+
+/** The SVG tag an item renders as. */
+const tagFor = (item: RenderItem): string => {
+  switch (item.kind) {
+    case 'path':
+    case 'marker':
+      return 'path';
+    case 'text':
+      return 'text';
+    case 'image':
+      return 'image';
+    case 'port':
+      return 'circle';
+    case 'icon':
+      return 'rect'; // placeholder plate; glyph resolution is host territory
+    case 'shape':
+      switch (item.shape) {
+        case 'ellipse':
+          return 'ellipse';
+        case 'polygon':
+          return 'polygon';
+        case 'path':
+          return 'path';
+        default:
+          return 'rect';
+      }
+  }
 };
 
 /**
@@ -116,28 +167,52 @@ export function createSvgRenderer(options: SvgRendererOptions = {}): SvgRenderer
     background.appendChild(fill);
   };
 
+  /** Rotation transform about the item's pivot (default: rect center). */
+  const rotationTransform = (
+    element: SVGElement,
+    rect: { x: number; y: number; width: number; height: number },
+    rotation: number,
+    pivot?: Point,
+  ): void => {
+    if (rotation % 360 !== 0) {
+      const cx = pivot?.x ?? rect.x + rect.width / 2;
+      const cy = pivot?.y ?? rect.y + rect.height / 2;
+      element.setAttribute('transform', `rotate(${rotation} ${cx} ${cy})`);
+    } else {
+      element.removeAttribute('transform');
+    }
+  };
+
   const applyItem = (element: SVGElement, item: RenderItem, lod: SceneFrame['lod']): void => {
     const { style } = item;
+    let strokeWidth = style.strokeWidth;
     if (item.kind === 'shape') {
-      if (item.shape === 'ellipse') {
-        element.setAttribute('cx', String(item.rect.x + item.rect.width / 2));
-        element.setAttribute('cy', String(item.rect.y + item.rect.height / 2));
-        element.setAttribute('rx', String(item.rect.width / 2));
-        element.setAttribute('ry', String(item.rect.height / 2));
-      } else {
-        element.setAttribute('x', String(item.rect.x));
-        element.setAttribute('y', String(item.rect.y));
-        element.setAttribute('width', String(item.rect.width));
-        element.setAttribute('height', String(item.rect.height));
+      switch (item.shape) {
+        case 'ellipse':
+          element.setAttribute('cx', String(item.rect.x + item.rect.width / 2));
+          element.setAttribute('cy', String(item.rect.y + item.rect.height / 2));
+          element.setAttribute('rx', String(item.rect.width / 2));
+          element.setAttribute('ry', String(item.rect.height / 2));
+          break;
+        case 'polygon':
+          element.setAttribute(
+            'points',
+            (item.points ?? []).map((p) => `${p.x},${p.y}`).join(' '),
+          );
+          break;
+        case 'path':
+          element.setAttribute('d', segmentData(item.segments ?? []));
+          break;
+        default:
+          element.setAttribute('x', String(item.rect.x));
+          element.setAttribute('y', String(item.rect.y));
+          element.setAttribute('width', String(item.rect.width));
+          element.setAttribute('height', String(item.rect.height));
+          if (item.shape === 'roundRect') element.setAttribute('rx', String(item.radius ?? 0));
+          else element.removeAttribute('rx');
       }
       element.setAttribute('fill', style.fill);
-      if (item.rotation % 360 !== 0) {
-        const cx = item.rect.x + item.rect.width / 2;
-        const cy = item.rect.y + item.rect.height / 2;
-        element.setAttribute('transform', `rotate(${item.rotation} ${cx} ${cy})`);
-      } else {
-        element.removeAttribute('transform');
-      }
+      rotationTransform(element, item.rect, item.rotation, item.pivot);
     } else if (item.kind === 'path') {
       element.setAttribute('d', pathData(item));
       element.setAttribute('fill', 'none');
@@ -146,6 +221,39 @@ export function createSvgRenderer(options: SvgRendererOptions = {}): SvgRenderer
       } else {
         element.removeAttribute('marker-end');
       }
+    } else if (item.kind === 'image') {
+      element.setAttribute('href', item.href);
+      element.setAttribute('x', String(item.rect.x));
+      element.setAttribute('y', String(item.rect.y));
+      element.setAttribute('width', String(item.rect.width));
+      element.setAttribute('height', String(item.rect.height));
+      element.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      rotationTransform(element, item.rect, item.rotation, item.pivot);
+    } else if (item.kind === 'icon') {
+      // ponytail: neutral plate + data-icon marker; real glyph resolution
+      // needs a host icon registry (close-out / P11 territory).
+      element.setAttribute('data-icon', item.icon);
+      element.setAttribute('x', String(item.rect.x));
+      element.setAttribute('y', String(item.rect.y));
+      element.setAttribute('width', String(item.rect.width));
+      element.setAttribute('height', String(item.rect.height));
+      element.setAttribute('rx', '4');
+      element.setAttribute('fill', style.fill);
+      rotationTransform(element, item.rect, item.rotation, item.pivot);
+    } else if (item.kind === 'port') {
+      element.setAttribute('cx', String(item.center.x));
+      element.setAttribute('cy', String(item.center.y));
+      element.setAttribute('r', String(item.radius));
+      element.setAttribute('fill', style.fill);
+    } else if (item.kind === 'marker') {
+      element.setAttribute('d', segmentData(item.segments));
+      element.setAttribute(
+        'transform',
+        `translate(${item.at.x} ${item.at.y}) rotate(${item.angle}) scale(${item.size})`,
+      );
+      element.setAttribute('fill', item.filled ? style.fill : 'none');
+      // Stroke width is applied inside the scaled marker space.
+      strokeWidth = style.strokeWidth / item.size;
     } else {
       element.setAttribute('x', String(item.position.x));
       element.setAttribute('y', String(item.position.y));
@@ -154,6 +262,8 @@ export function createSvgRenderer(options: SvgRendererOptions = {}): SvgRenderer
       element.setAttribute('font-family', style.fontFamily);
       element.setAttribute('font-size', String(style.fontSize));
       element.setAttribute('fill', style.textColor);
+      if (style.bold === true) element.setAttribute('font-weight', 'bold');
+      else element.removeAttribute('font-weight');
       element.textContent = item.text;
     }
     if (item.kind !== 'text') {
@@ -161,15 +271,20 @@ export function createSvgRenderer(options: SvgRendererOptions = {}): SvgRenderer
       if (lod === 'dot') element.removeAttribute('stroke');
       else {
         element.setAttribute('stroke', style.stroke);
-        element.setAttribute('stroke-width', String(style.strokeWidth));
+        element.setAttribute('stroke-width', String(strokeWidth));
+      }
+      if (style.strokeDasharray !== undefined) {
+        element.setAttribute('stroke-dasharray', style.strokeDasharray.join(' '));
+      } else {
+        element.removeAttribute('stroke-dasharray');
       }
     }
+    if (style.opacity !== undefined) element.setAttribute('opacity', String(style.opacity));
+    else element.removeAttribute('opacity');
   };
 
   const createElement = (item: RenderItem): SVGElement => {
-    const tag =
-      item.kind === 'path' ? 'path' : item.kind === 'text' ? 'text' : item.shape === 'ellipse' ? 'ellipse' : 'rect';
-    const element = document.createElementNS(SVG_NS, tag);
+    const element = document.createElementNS(SVG_NS, tagFor(item));
     element.setAttribute('data-item', item.id);
     return element;
   };
@@ -255,8 +370,17 @@ export function createSvgRenderer(options: SvgRendererOptions = {}): SvgRenderer
       }
       for (const id of frame.dirty.updated) {
         const item = itemById.get(id);
-        const element = elements.get(id);
-        if (item && element) applyItem(element, item, frame.lod);
+        let element = elements.get(id);
+        if (!item || !element) continue;
+        if (element.tagName !== tagFor(item)) {
+          // The item changed geometry kind (e.g. a node re-typed rect →
+          // diamond) — the SVG tag must change with it.
+          const next = createElement(item);
+          element.replaceWith(next);
+          elements.set(id, next);
+          element = next;
+        }
+        applyItem(element, item, frame.lod);
       }
       // Paint order: reorder only where the incremental patches broke it.
       for (const layer of ['edges', 'nodes'] as const) {

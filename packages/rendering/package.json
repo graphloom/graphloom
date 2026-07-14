@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@graphloom/core": "workspace:*",
-    "d3-quadtree": "^3.0.1"
+    "d3-quadtree": "^3.0.1",
+    "@graphloom/themes": "workspace:*"
   }
 }

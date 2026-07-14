@@ -274,13 +274,20 @@ importers:
       '@graphloom/core':
         specifier: workspace:*
         version: link:../core
+      '@graphloom/themes':
+        specifier: workspace:*
+        version: link:../themes
       d3-quadtree:
         specifier: ^3.0.1
         version: 3.0.1
 
   packages/serialization: {}
 
-  packages/themes: {}
+  packages/themes:
+    dependencies:
+      '@graphloom/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 

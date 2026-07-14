@@ -14,9 +14,27 @@ export type {
   Point,
   Port,
   PortSide,
+  PortVisibility,
   Size,
   Viewport,
 } from './types.js';
+export {
+  DEFAULT_VISUAL_STATE,
+  SHAPE_SPEC_VERSION,
+  validateShapeSpec,
+  type MarkerSpec,
+  type PathSegment,
+  type ShapeDescriptor,
+  type ShapeSpec,
+  type SpecAnchor,
+  type SpecPrimitive,
+  type SpecStyle,
+  type SpecTextStyle,
+  type TextOverflow,
+  type Theme,
+  type ThemeTokens,
+  type VisualState,
+} from './shape.js';
 export { uuidv7 } from './id.js';
 export { CommandValidationError, LimitExceededError, type LimitKind } from './errors.js';
 export { Emitter, type GraphEventMap, type Unsubscribe } from './events.js';

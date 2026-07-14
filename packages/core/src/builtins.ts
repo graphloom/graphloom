@@ -13,6 +13,7 @@ import type {
   Node,
   Point,
   PortSide,
+  PortVisibility,
   Size,
 } from './types.js';
 
@@ -44,6 +45,7 @@ export interface PortInit {
   readonly id: string;
   readonly side?: PortSide;
   readonly offset?: number;
+  readonly visibility?: PortVisibility;
   readonly data?: JsonObject;
 }
 
@@ -119,6 +121,7 @@ export function createNode(init: NodeInit = {}): Node {
       id: p.id,
       side: p.side ?? 'right',
       offset: p.offset ?? 0.5,
+      ...(p.visibility !== undefined && { visibility: p.visibility }),
       data: p.data ?? {},
     })),
     data: init.data ?? {},

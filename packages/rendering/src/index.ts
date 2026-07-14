@@ -20,6 +20,8 @@ export {
   rectsIntersect,
   rotatedRectBounds,
   rotatedRectCorners,
+  pointInPolygon,
+  quadraticBezierPoint,
   rotation,
   rotationAbout,
   scaling,
@@ -49,11 +51,13 @@ export {
 } from './frame.js';
 export {
   compareRenderItems,
-  DEFAULT_EDGE_STYLE,
-  DEFAULT_NODE_STYLE,
   edgeAnchor,
   SceneGraph,
+  type IconRenderItem,
+  type ImageRenderItem,
+  type MarkerRenderItem,
   type PathRenderItem,
+  type PortRenderItem,
   type RenderItem,
   type RenderItemBase,
   type RenderItemId,
@@ -65,6 +69,30 @@ export {
   type ShapeRenderItem,
   type TextRenderItem,
 } from './scene.js';
+export {
+  flattenSegments,
+  lowerShapeSpec,
+  nodeTransform,
+  specAnchorPoint,
+  transformSegments,
+  type LowerContext,
+} from './spec.js';
+export { builtinShapes, resolveShapeDescriptor, statePaint } from './shapes.js';
+export {
+  collapseCollinear,
+  createRouters,
+  routeBounds,
+  routeEdge,
+  routePointAt,
+  routeTangentAt,
+  selfLoopRouter,
+  type EdgeRoute,
+  type EdgeRouteContext,
+  type EdgeRouter,
+  type EdgeSiblings,
+  type RouterOptions,
+} from './routing.js';
+export { builtinMarkers, resolveMarker } from './markers.js';
 export { createMockRenderer, hitTestFrame, type Renderer } from './renderer.js';
 export {
   createSvgRenderer,

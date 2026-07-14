@@ -2,6 +2,7 @@ import type { CommandBus, CommandDef } from './command.js';
 import type { ConnectionValidator } from './builtins.js';
 import type { Emitter, GraphEventMap } from './events.js';
 import type { GraphView } from './model.js';
+import type { MarkerSpec, ShapeDescriptor } from './shape.js';
 import type { JsonObject } from './types.js';
 
 /**
@@ -75,8 +76,10 @@ export interface PluginContext {
   };
   /** Connection validators consulted by `edge.add` (P2-T09). */
   readonly validators: PluginRegistry<ConnectionValidator>;
-  /** Shape descriptors (consumed from P7). */
-  readonly shapes: PluginRegistry<JsonObject>;
+  /** Tier-1 shape descriptors, keyed by node `type` (ADR-0003, P7). */
+  readonly shapes: PluginRegistry<ShapeDescriptor>;
+  /** Edge-end marker definitions, keyed by marker name (P7-T06). */
+  readonly markers: PluginRegistry<MarkerSpec>;
   /** Layout algorithms (consumed from P8). */
   readonly layouts: PluginRegistry<unknown>;
   /** Document importers (consumed from P10). */
@@ -92,7 +95,8 @@ export interface PluginContext {
 /** The registries shared by a host and its plugins; owned by the editor. */
 export interface HostRegistries {
   readonly validators: Map<string, ConnectionValidator>;
-  readonly shapes: Map<string, JsonObject>;
+  readonly shapes: Map<string, ShapeDescriptor>;
+  readonly markers: Map<string, MarkerSpec>;
   readonly layouts: Map<string, unknown>;
   readonly importers: Map<string, unknown>;
   readonly exporters: Map<string, unknown>;
@@ -105,6 +109,7 @@ export function createRegistries(): HostRegistries {
   return {
     validators: new Map(),
     shapes: new Map(),
+    markers: new Map(),
     layouts: new Map(),
     importers: new Map(),
     exporters: new Map(),
@@ -232,6 +237,7 @@ export class PluginHost {
       },
       validators: track(this.#registries.validators, plugin.id),
       shapes: track(this.#registries.shapes, plugin.id),
+      markers: track(this.#registries.markers, plugin.id),
       layouts: track(this.#registries.layouts, plugin.id),
       importers: track(this.#registries.importers, plugin.id),
       exporters: track(this.#registries.exporters, plugin.id),

@@ -5,23 +5,53 @@
     "outDir": "dist/types",
     "jsx": "react-jsx",
     "paths": {
-      "@graphloom/clipboard": ["../../packages/clipboard/src/index.ts"],
-      "@graphloom/core": ["../../packages/core/src/index.ts"],
-      "@graphloom/history": ["../../packages/history/src/index.ts"],
-      "@graphloom/interaction": ["../../packages/interaction/src/index.ts"],
-      "@graphloom/react": ["../../packages/react/src/index.ts"],
-      "@graphloom/rendering": ["../../packages/rendering/src/index.ts"]
+      "@graphloom/clipboard": [
+        "../../packages/clipboard/src/index.ts"
+      ],
+      "@graphloom/core": [
+        "../../packages/core/src/index.ts"
+      ],
+      "@graphloom/history": [
+        "../../packages/history/src/index.ts"
+      ],
+      "@graphloom/interaction": [
+        "../../packages/interaction/src/index.ts"
+      ],
+      "@graphloom/react": [
+        "../../packages/react/src/index.ts"
+      ],
+      "@graphloom/rendering": [
+        "../../packages/rendering/src/index.ts"
+      ],
+      "@graphloom/themes": [
+        "../../packages/themes/src/index.ts"
+      ]
     }
   },
   "include": [
     "src"
   ],
   "references": [
-    { "path": "../../packages/clipboard" },
-    { "path": "../../packages/core" },
-    { "path": "../../packages/history" },
-    { "path": "../../packages/interaction" },
-    { "path": "../../packages/react" },
-    { "path": "../../packages/rendering" }
+    {
+      "path": "../../packages/clipboard"
+    },
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/history"
+    },
+    {
+      "path": "../../packages/interaction"
+    },
+    {
+      "path": "../../packages/react"
+    },
+    {
+      "path": "../../packages/rendering"
+    },
+    {
+      "path": "../../packages/themes"
+    }
   ]
 }

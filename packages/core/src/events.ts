@@ -60,6 +60,17 @@ export interface GraphEventMap {
   };
   /** Document metadata changed via `graph.update`. */
   'graph.updated': { readonly meta: GraphMeta; readonly previous: GraphMeta };
+  /**
+   * A host should open an inline label editor (P7-T04 editing contract): the
+   * core never renders inputs — hosts show an overlay and commit the result
+   * via `node.update`/`edge.update` (one coalesced history entry).
+   */
+  'label.editRequested': {
+    readonly target: 'node' | 'edge';
+    readonly id: string;
+    /** Index into `Edge.labels` (edges only). */
+    readonly labelIndex?: number;
+  };
   /** Viewport pan/zoom changed (emitted by rendering from P3). */
   'viewport.changed': { readonly viewport: Viewport };
   /** A layout run finished (emitted by @graphloom/layout from P8). */

@@ -1,5 +1,6 @@
 import { registerBuiltins } from './builtins.js';
 import { CommandBus, DEFAULT_LIMITS, type ExecuteOptions, type GraphLimits } from './command.js';
+import { CommandValidationError } from './errors.js';
 import { Emitter, type GraphEventMap, type Unsubscribe } from './events.js';
 import { uuidv7 } from './id.js';
 import { GraphModel, type GraphView } from './model.js';
@@ -57,6 +58,12 @@ export interface GraphEditor {
   unuse(pluginId: string): void;
   /** Ids of installed plugins, in install order. */
   plugins(): readonly string[];
+  /**
+   * Asks hosts to open an inline label editor (P7-T04): validates the target
+   * exists, then emits `label.editRequested`. No model change — hosts commit
+   * the edited text themselves via `node.update`/`edge.update`.
+   */
+  requestLabelEdit(target: 'node' | 'edge', id: string, labelIndex?: number): void;
   /** Extension registries (validators, shapes, layouts, …) shared with plugins. */
   readonly registries: HostRegistries;
   /** Takes a canonical {@link GraphSnapshot} of the current state. */
@@ -98,6 +105,21 @@ export function createGraph(options: CreateGraphOptions = {}): GraphEditor {
     use: (...plugins) => host.use(...plugins),
     unuse: (pluginId) => host.unuse(pluginId),
     plugins: () => host.installed(),
+    requestLabelEdit: (target, id, labelIndex) => {
+      const element = target === 'node' ? model.getNode(id) : model.getEdge(id);
+      if (!element) throw new CommandValidationError('label.edit', `unknown ${target} ${id}`);
+      if (labelIndex !== undefined) {
+        const edge = model.getEdge(id);
+        if (!edge || edge.labels[labelIndex] === undefined) {
+          throw new CommandValidationError('label.edit', `no label ${labelIndex} on edge ${id}`);
+        }
+      }
+      emitter.emit('label.editRequested', {
+        target,
+        id,
+        ...(labelIndex !== undefined && { labelIndex }),
+      });
+    },
     registries,
     snapshot: () =>
       structuredClone({

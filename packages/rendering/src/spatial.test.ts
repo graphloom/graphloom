@@ -60,9 +60,12 @@ describe('SpatialIndex hit testing', () => {
     const { editor, index } = setup();
     addNode(editor, 's', 0, 0);
     addNode(editor, 't', 300, 200);
+    // Same geometry, distinct node pair — two edges on one pair would fan
+    // apart (P7-T05 parallel-edge fanning).
+    addNode(editor, 't2', 300, 200);
     editor.execute(commands.edgeAdd({ id: 'line', source: 's', target: 't' }));
     editor.execute(
-      commands.edgeAdd({ id: 'curve', source: 's', target: 't', routing: 'bezier', zIndex: 1 }),
+      commands.edgeAdd({ id: 'curve', source: 's', target: 't2', routing: 'bezier', zIndex: 1 }),
     );
     const scene = index.hitTest({ x: 150, y: 200 }); // far from both paths
     expect(scene).toBeNull();

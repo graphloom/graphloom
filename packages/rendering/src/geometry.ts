@@ -198,6 +198,30 @@ export function pointInEllipse(p: Point, r: Rect, degrees = 0): boolean {
   return dx * dx + dy * dy <= 1;
 }
 
+/** True when the point lies inside the polygon (even-odd rule; edges count). */
+export function pointInPolygon(p: Point, points: readonly Point[]): boolean {
+  if (points.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const a = points[i] as Point;
+    const b = points[j] as Point;
+    if ((a.y > p.y) !== (b.y > p.y)) {
+      const x = ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x;
+      if (p.x < x) inside = !inside;
+    }
+  }
+  return inside || distanceToPolyline(p, [...points, points[0] as Point]) === 0;
+}
+
+/** Point on a quadratic Bézier (endpoints `p0`/`p1`, control `c`) at `t` ∈ [0, 1]. */
+export function quadraticBezierPoint(p0: Point, c: Point, p1: Point, t: number): Point {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * c.x + t * t * p1.x,
+    y: u * u * p0.y + 2 * u * t * c.y + t * t * p1.y,
+  };
+}
+
 /** Shortest distance from a point to the segment `[a, b]`. */
 export function distanceToSegment(p: Point, a: Point, b: Point): number {
   const abx = b.x - a.x;
