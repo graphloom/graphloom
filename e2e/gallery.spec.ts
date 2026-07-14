@@ -48,9 +48,10 @@ test('every built-in shape renders on the SVG backend', async ({ page }) => {
 });
 
 test('dark/light themes switch live without touching the model', async ({ page }) => {
-  const fillOf = (): Promise<string | null> =>
-    page.locator('[data-item="node:s-rectangle"]').getAttribute('fill');
-  expect(await fillOf()).toBe('#e8eefc'); // pinned light token
+  // Repaints land on the next animation frame — always use the retrying
+  // attribute assertion, never a one-shot read (CI-found race).
+  const rectangle = page.locator('[data-item="node:s-rectangle"]');
+  await expect(rectangle).toHaveAttribute('fill', '#e8eefc'); // pinned light token
 
   // Count model commits across the toggles — theme switching must emit none.
   await page.evaluate(() => {
@@ -62,14 +63,11 @@ test('dark/light themes switch live without touching the model', async ({ page }
 
   await page.getByTestId('theme-toggle').click();
   await expect(page.getByTestId('theme-name')).toHaveText('dark');
-  await expect(page.locator('[data-item="node:s-rectangle"]')).toHaveAttribute(
-    'fill',
-    '#1e2a4a', // dark token
-  );
+  await expect(rectangle).toHaveAttribute('fill', '#1e2a4a'); // dark token
 
   await page.getByTestId('theme-toggle').click();
   await expect(page.getByTestId('theme-name')).toHaveText('light');
-  expect(await fillOf()).toBe('#e8eefc'); // exact round-trip
+  await expect(rectangle).toHaveAttribute('fill', '#e8eefc'); // exact round-trip
   expect(
     await page.evaluate(() => (window as unknown as { changeCount: number }).changeCount),
   ).toBe(0); // no model events in history (P7-T07 acceptance, in a real browser)
