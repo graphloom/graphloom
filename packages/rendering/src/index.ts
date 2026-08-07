@@ -112,6 +112,13 @@ export {
   type ViewportEventMap,
   type ViewportOptions,
 } from './viewport.js';
+export {
+  createLayoutTransition,
+  type LayoutTransition,
+  type LayoutTransitionEventMap,
+  type LayoutTransitionOptions,
+  type TransitionTarget,
+} from './transitions.js';
 
 /** This package's name (kept for the P1 smoke test and tree-shake probe). */
 export const PACKAGE_NAME = '@graphloom/rendering';

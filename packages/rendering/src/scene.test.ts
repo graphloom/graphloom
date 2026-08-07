@@ -238,6 +238,95 @@ describe('SceneGraph dirty sets', () => {
   });
 });
 
+describe('SceneGraph position overrides (P8-T06 layout transitions)', () => {
+  it('overrides a rendered position without touching the model', () => {
+    const editor = createGraph();
+    const scene = new SceneGraph(editor);
+    addNode(editor, 'a', 10, 20);
+
+    scene.setPositionOverride('a', { x: 100, y: 200 });
+
+    expect(scene.get('node:a')).toMatchObject({ rect: { x: 100, y: 200 } });
+    expect(editor.graph.getNode('a')?.position).toEqual({ x: 10, y: 20 });
+    expect(scene.hasPositionOverride('a')).toBe(true);
+  });
+
+  it('clearing an override reverts to the model position', () => {
+    const editor = createGraph();
+    const scene = new SceneGraph(editor);
+    addNode(editor, 'a', 10, 20);
+    scene.setPositionOverride('a', { x: 100, y: 200 });
+
+    scene.setPositionOverride('a', null);
+
+    expect(scene.get('node:a')).toMatchObject({ rect: { x: 10, y: 20 } });
+    expect(scene.hasPositionOverride('a')).toBe(false);
+  });
+
+  it('overriding a node dirties its incident edges too, same as a real move', () => {
+    const editor = createGraph();
+    const scene = new SceneGraph(editor);
+    addNode(editor, 'a');
+    addNode(editor, 'b', 200, 0);
+    editor.execute(commands.edgeAdd({ id: 'e', source: 'a', target: 'b' }));
+    scene.takeDirty();
+
+    scene.setPositionOverride('a', { x: -50, y: -50 });
+
+    expect([...scene.takeDirty().updated].sort()).toEqual(['edge:e', 'node:a']);
+  });
+
+  it('overriding a collapsed group member moves the group proxy bounds', () => {
+    const editor = createGraph();
+    const scene = new SceneGraph(editor);
+    addNode(editor, 'a', 0, 0);
+    editor.execute(commands.groupCreate({ id: 'g', members: ['a'] }));
+    editor.execute(commands.groupCollapse('g'));
+    const before = scene.get('group:g');
+
+    scene.setPositionOverride('a', { x: 500, y: 500 });
+
+    const after = scene.get('group:g');
+    expect(after?.bounds).not.toEqual(before?.bounds);
+    expect(after?.bounds).toMatchObject({ x: 500, y: 500 });
+  });
+
+  it('a redundant override (same value) is a no-op — no dirty entry', () => {
+    const editor = createGraph();
+    const scene = new SceneGraph(editor);
+    addNode(editor, 'a', 10, 20);
+    scene.setPositionOverride('a', { x: 100, y: 200 });
+    scene.takeDirty();
+
+    scene.setPositionOverride('a', { x: 100, y: 200 });
+
+    expect(scene.takeDirty()).toEqual({ added: [], updated: [], removed: [] });
+  });
+
+  it('clearing when nothing was overridden is a no-op', () => {
+    const editor = createGraph();
+    const scene = new SceneGraph(editor);
+    addNode(editor, 'a', 10, 20);
+    scene.takeDirty();
+
+    scene.setPositionOverride('a', null);
+
+    expect(scene.takeDirty()).toEqual({ added: [], updated: [], removed: [] });
+    expect(scene.hasPositionOverride('a')).toBe(false);
+  });
+
+  it('rebuild() (theme switch) preserves an active override', () => {
+    const editor = createGraph();
+    const scene = new SceneGraph(editor);
+    addNode(editor, 'a', 10, 20);
+    scene.setPositionOverride('a', { x: 100, y: 200 });
+
+    scene.rebuild();
+
+    expect(scene.get('node:a')).toMatchObject({ rect: { x: 100, y: 200 } });
+  });
+});
+
 // ---- the R1 acceptance property -------------------------------------------
 // Any random command sequence: the incrementally maintained scene must deep-
 // equal a from-scratch derivation, and replaying dirty sets must reproduce

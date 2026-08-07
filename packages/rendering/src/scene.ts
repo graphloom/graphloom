@@ -301,6 +301,8 @@ export class SceneGraph {
   #sorted: readonly RenderItem[] | null = null;
   #revision = 0;
   #subscriptions: Unsubscribe[] = [];
+  /** nodeId → rendered position, overriding `Node.position` (P8-T06 transitions). */
+  #positionOverrides = new Map<string, Point>();
 
   constructor(editor: GraphEditor, options: SceneOptions = {}) {
     this.#editor = editor;
@@ -382,6 +384,32 @@ export class SceneGraph {
   /** The visual state of an element (at rest unless pushed). */
   stateOf(elementId: string): VisualState {
     return this.#states.get(elementId) ?? DEFAULT_VISUAL_STATE;
+  }
+
+  /**
+   * Overrides a node's rendered position without touching the model (P8-T06
+   * layout transitions): the core clock writes eased positions here every
+   * frame while the model already holds the final, committed position.
+   * `null` reverts to the model's own position. Refreshes the node's body,
+   * labels, ports, connected edges, and any group proxy it contributes to —
+   * the same fan-out a real `node.updated` event triggers, just without one
+   * (history stays untouched — this is presentation only).
+   */
+  setPositionOverride(nodeId: string, position: Point | null): void {
+    const existing = this.#positionOverrides.get(nodeId);
+    if (position === null) {
+      if (existing === undefined) return;
+      this.#positionOverrides.delete(nodeId);
+    } else {
+      if (existing && existing.x === position.x && existing.y === position.y) return;
+      this.#positionOverrides.set(nodeId, position);
+    }
+    this.#refreshNodeAndNeighbors(nodeId);
+  }
+
+  /** True while `nodeId`'s rendered position is overridden (mid-transition). */
+  hasPositionOverride(nodeId: string): boolean {
+    return this.#positionOverrides.has(nodeId);
   }
 
   /** Looks a render item up by id. */
@@ -517,10 +545,18 @@ export class SceneGraph {
     }
   }
 
+  /** `graph.getNode`, with any active position override applied (P8-T06). */
+  #node(id: string): Node | undefined {
+    const node = this.#editor.graph.getNode(id);
+    if (!node) return undefined;
+    const override = this.#positionOverrides.get(id);
+    return override ? { ...node, position: override } : node;
+  }
+
   #deriveElement(kind: SceneElementKind, elementId: string): RenderItem[] {
     const graph = this.#editor.graph;
     if (kind === 'node') {
-      const node = graph.getNode(elementId);
+      const node = this.#node(elementId);
       return node && this.#nodeVisible(node) ? this.#nodeItems(node) : [];
     }
     if (kind === 'edge') {
@@ -737,9 +773,8 @@ export class SceneGraph {
   }
 
   #edgeItems(edge: Edge): RenderItem[] {
-    const graph = this.#editor.graph;
-    const source = graph.getNode(edge.source) as Node;
-    const target = graph.getNode(edge.target) as Node;
+    const source = this.#node(edge.source) as Node;
+    const target = this.#node(edge.target) as Node;
     const sourceSpec = this.#specOf(source, this.stateOf(source.id));
     const targetSpec = this.#specOf(target, this.stateOf(target.id));
     const from = edgeAnchor(source, edge.sourcePort, sourceSpec);
@@ -832,12 +867,11 @@ export class SceneGraph {
   }
 
   #groupItems(group: Group): RenderItem[] {
-    const graph = this.#editor.graph;
     let bounds: Rect | null = null;
     let zIndex = 0;
     let members = 0;
     for (const memberId of group.members) {
-      const node = graph.getNode(memberId);
+      const node = this.#node(memberId);
       if (!node) continue;
       members++;
       const nodeBounds = rotatedRectBounds(
