@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { PACKAGE_NAME } from './index.js';
+import { createLayoutRunner } from './index.js';
 
-it('exports its package name', () => {
-  expect(PACKAGE_NAME).toBe('@graphloom/layout');
+it('exposes the runner through the barrel', () => {
+  expect(typeof createLayoutRunner).toBe('function');
 });
