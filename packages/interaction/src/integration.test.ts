@@ -87,6 +87,14 @@ describe('Phase 4 integration: the full editing loop', () => {
     expect(editor.graph.getNode('a')!.position).toEqual({ x: 100, y: 100 });
     expect(editor.graph.getNode('b')!.position).toEqual({ x: 400, y: 100 });
 
+    // -- drag.begin fires once, with the dragged node ids (P8-T06 hand-off hook) --
+    const dragBegins: (readonly string[])[] = [];
+    engine.on('drag.begin', ({ nodeIds }) => dragBegins.push(nodeIds));
+    dragPointer([140, 120], [160, 130]);
+    expect(dragBegins.length).toBe(1);
+    expect([...dragBegins[0]!].sort()).toEqual(['a', 'b']); // the multi-selection from above
+    history.undo();
+
     // -- ESC aborts a drag with zero model change ------------------------------
     engine.pointerDown(p(140, 120));
     engine.pointerMove(p(200, 200));

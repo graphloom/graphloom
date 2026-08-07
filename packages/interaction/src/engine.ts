@@ -60,6 +60,14 @@ export interface EngineEventMap {
   'marquee.changed': { readonly rect: Rect | null };
   /** Right-click / long-press produced a menu request (host renders the UI). */
   'contextmenu.requested': { readonly request: ContextMenuRequest };
+  /**
+   * A node/group-body drag just started (fires once `DragController.begin`
+   * succeeds). Generic engine-level information, not transition-specific —
+   * a host wiring layout transitions (P8-T06) uses it as the hand-off hook:
+   * cancel any in-flight transition on `nodeIds` here so nothing keeps
+   * animating underneath the gesture.
+   */
+  'drag.begin': { readonly nodeIds: readonly string[] };
 }
 
 type Mode = 'idle' | 'pan' | 'marquee' | 'drag' | 'transform' | 'connect';
@@ -238,6 +246,7 @@ export class InteractionEngine {
       const nodeIds = this.#dragSetFor(hit, g);
       if (this.drag.begin(nodeIds, g.origin)) {
         this.#mode = 'drag';
+        this.#emitter.emit('drag.begin', { nodeIds });
         return;
       }
       return; // locked-only target: swallow the drag

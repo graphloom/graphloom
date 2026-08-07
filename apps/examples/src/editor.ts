@@ -5,12 +5,14 @@ import { commands, createGraph, type Point } from '@graphloom/core';
 import { createClipboard } from '@graphloom/clipboard';
 import { createHistory } from '@graphloom/history';
 import {
+  createLayoutTransition,
   createSvgRenderer,
   edgeAnchor,
   mountRenderer,
   rotatedRectCorners,
   type Rect,
 } from '@graphloom/rendering';
+import { createLayoutRunner, gridLayout } from '@graphloom/layout';
 import {
   attachInteraction,
   chordOf,
@@ -50,6 +52,8 @@ app.innerHTML = `
     <span>nodes: <span data-testid="nodes">0</span></span>
     <span>edges: <span data-testid="edges">0</span></span>
     <span>undo: <span data-testid="can-undo">no</span></span>
+    <button data-testid="run-layout" type="button">Run layout (animated)</button>
+    <span>transitioning: <span data-testid="transitioning">no</span></span>
     <span style="color:#8892a6">double-click: add node · drag port: connect · right-click: menu</span>
   </header>
   <div id="stage">
@@ -110,6 +114,31 @@ const engine = new InteractionEngine(
   { snap: { gridSize: 20 } },
 );
 attachInteraction(engine, canvas);
+
+// ---- layout transitions (P8-T06): commit final positions immediately via
+// the layout runner, then play a visual-only ease from old to new. A drag
+// starting on a still-transitioning node hands off cleanly: drag.begin
+// cancels its override immediately rather than leaving two things (the
+// transition and the drag preview) fighting over the same node.
+const layoutRunner = createLayoutRunner(editor);
+const transition = createLayoutTransition(host.scene, { duration: 2000 });
+const transitioningEl = document.querySelector('[data-testid="transitioning"]') as HTMLElement;
+engine.on('drag.begin', ({ nodeIds }) => transition.cancel(nodeIds));
+
+async function runLayout(): Promise<void> {
+  const ids = editor.graph.nodes().map((n) => n.id);
+  const from = new Map(ids.map((id) => [id, editor.graph.getNode(id)!.position]));
+  await layoutRunner.run(gridLayout, { options: {} }); // one transaction, final positions
+  const targets = new Map(
+    ids.map((id) => [id, { from: from.get(id)!, to: editor.graph.getNode(id)!.position }]),
+  );
+  transitioningEl.textContent = 'yes';
+  await transition.run(targets);
+  transitioningEl.textContent = 'no';
+}
+document.querySelector('[data-testid="run-layout"]')!.addEventListener('click', () => {
+  void runLayout();
+});
 
 // Double-click on empty canvas creates a node (the demo's palette).
 engine.gestures.on('double-tap', ({ point }) => {
@@ -354,7 +383,8 @@ declare global {
       history: typeof history;
       clipboard: typeof clipboard;
       host: typeof host;
+      transition: typeof transition;
     };
   }
 }
-window.editorDemo = { editor, engine, history, clipboard, host };
+window.editorDemo = { editor, engine, history, clipboard, host, transition };
