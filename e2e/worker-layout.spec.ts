@@ -47,3 +47,29 @@ test('every node moves off its seeded position — the whole graph was laid out,
     expect(await nodePosition(page, id)).not.toEqual({ x: 0, y: 0 });
   }
 });
+
+// The live-preview button runs 20k iterations (~200ms, measured) — long
+// enough for a real click on Stop to land while the worker is still running,
+// proving stop() through the full stack (worker → postMessage → runner),
+// not just the in-process fake worker-adapter.test.ts and runner.test.ts use.
+test('stop() mid-flight commits the streamed live-preview positions as exactly one history entry', async ({
+  page,
+}) => {
+  const before = await nodePosition(page, 'a');
+
+  await page.getByTestId('run-force-preview').click();
+  await expect(page.getByTestId('preview-count')).not.toHaveText('0');
+  await expect(page.getByTestId('status')).toHaveText('running...'); // still in flight
+  await page.getByTestId('stop').click();
+  await expect(page.getByTestId('status')).toHaveText('done'); // stop() still resolves applied: true
+
+  const after = await nodePosition(page, 'a');
+  expect(after).not.toEqual(before);
+  await expect(page.getByTestId('can-undo')).toHaveText('yes');
+
+  const undone = await page.evaluate(() => window.workerLayoutDemo.history.undo());
+  expect(undone).toBe(true);
+  expect(await nodePosition(page, 'a')).toEqual(before); // one undo restores the seed
+  const undoneAgain = await page.evaluate(() => window.workerLayoutDemo.history.undo());
+  expect(undoneAgain).toBe(false); // nothing left — confirms it was exactly one entry
+});
