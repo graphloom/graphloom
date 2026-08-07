@@ -28,6 +28,7 @@ export { createWorkerEngine, type WorkerLike } from './worker-adapter.js';
 export type {
   WorkerCancelRequest,
   WorkerErrorResponse,
+  WorkerPreviewResponse,
   WorkerProgressResponse,
   WorkerRequest,
   WorkerResponse,

@@ -3,7 +3,7 @@ import type { LayoutContext, LayoutGraph } from './contract.js';
 import { forceLayout } from './force.js';
 
 function ctx(signal = new AbortController().signal): LayoutContext {
-  return { signal, reportProgress: () => {} };
+  return { signal, reportProgress: () => {}, reportPreview: () => {} };
 }
 
 function node(id: string, x = 0, y = 0): LayoutGraph['nodes'][number] {
@@ -66,11 +66,25 @@ it('reports progress during a normal run', async () => {
   const seen: number[] = [];
   const graph: LayoutGraph = { nodes: [node('a'), node('b')], edges: [edge('e', 'a', 'b')] };
 
-  await forceLayout.compute(
-    graph,
-    { iterations: 50 },
-    { signal: new AbortController().signal, reportProgress: (ratio) => seen.push(ratio) },
-  );
+  await forceLayout.compute(graph, { iterations: 50 }, {
+    signal: new AbortController().signal,
+    reportProgress: (ratio) => seen.push(ratio),
+    reportPreview: () => {},
+  });
 
   expect(seen.length).toBeGreaterThan(0);
+});
+
+it('streams interim positions for every node during a normal run (live-preview mode)', async () => {
+  const seen: Array<ReadonlyMap<string, unknown>> = [];
+  const graph: LayoutGraph = { nodes: [node('a'), node('b')], edges: [edge('e', 'a', 'b')] };
+
+  await forceLayout.compute(graph, { iterations: 50 }, {
+    signal: new AbortController().signal,
+    reportProgress: () => {},
+    reportPreview: (positions) => seen.push(positions),
+  });
+
+  expect(seen.length).toBeGreaterThan(0);
+  expect(seen[0]?.size).toBe(2);
 });

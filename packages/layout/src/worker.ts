@@ -43,6 +43,7 @@ export async function handleWorkerRequest(
     const result = await engine.compute(request.graph, request.options as never, {
       signal: controller.signal,
       reportProgress: (ratio) => post({ kind: 'progress', runId: request.runId, ratio }),
+      reportPreview: (positions) => post({ kind: 'preview', runId: request.runId, positions }),
     });
     post({ kind: 'result', runId: request.runId, positions: result.positions });
   } catch (error) {

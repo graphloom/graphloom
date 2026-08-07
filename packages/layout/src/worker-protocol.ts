@@ -26,6 +26,13 @@ export interface WorkerProgressResponse {
   readonly ratio: number;
 }
 
+/** A run streamed interim positions for a live-preview UI. */
+export interface WorkerPreviewResponse {
+  readonly kind: 'preview';
+  readonly runId: number;
+  readonly positions: ReadonlyMap<string, Point>;
+}
+
 /** A run finished successfully. */
 export interface WorkerResultResponse {
   readonly kind: 'result';
@@ -41,4 +48,8 @@ export interface WorkerErrorResponse {
 }
 
 /** Messages sent worker → main-thread. */
-export type WorkerResponse = WorkerProgressResponse | WorkerResultResponse | WorkerErrorResponse;
+export type WorkerResponse =
+  | WorkerProgressResponse
+  | WorkerPreviewResponse
+  | WorkerResultResponse
+  | WorkerErrorResponse;

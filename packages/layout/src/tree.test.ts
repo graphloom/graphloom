@@ -5,6 +5,7 @@ import { treeLayout } from './tree.js';
 const ctx: LayoutContext = {
   signal: new AbortController().signal,
   reportProgress: () => {},
+  reportPreview: () => {},
 };
 
 function node(id: string): LayoutGraph['nodes'][number] {

@@ -31,6 +31,14 @@ export interface LayoutContext {
   readonly signal: AbortSignal;
   /** Reports progress in `[0, 1]`. Engines that can't estimate progress may skip this. */
   reportProgress(ratio: number): void;
+  /**
+   * Streams interim, uncommitted positions for a live-preview UI. Optional —
+   * iterative engines (e.g. force-directed) call it periodically; engines
+   * with no meaningful interim state may skip it. When a run is stopped
+   * early (`LayoutRunner.stop`, as opposed to `cancel`), the runner commits
+   * whichever positions were reported here most recently.
+   */
+  reportPreview(positions: ReadonlyMap<string, Point>): void;
 }
 
 /**

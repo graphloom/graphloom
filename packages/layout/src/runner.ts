@@ -6,12 +6,15 @@ import {
   type GraphView,
   type Unsubscribe,
 } from '@graphloom/core';
+import type { Point } from '@graphloom/core';
 import type { LayoutContext, LayoutEngine, LayoutGraph, LayoutResult } from './contract.js';
 
 /** Events emitted by a {@link LayoutRunner}. */
 export interface LayoutEventMap {
   /** An in-flight run reported progress. */
   'layout.progress': { readonly layout: string; readonly ratio: number };
+  /** An in-flight run streamed interim positions for a live-preview UI (see `LayoutContext.reportPreview`). */
+  'layout.preview': { readonly layout: string; readonly positions: ReadonlyMap<string, Point> };
   /** A run finished and its positions were applied as one transaction. */
   'layout.completed': { readonly layout: string };
 }
@@ -47,11 +50,20 @@ export interface LayoutRunner {
    * Runs `engine`, then applies its result as one `node.update` per
    * positioned node inside a single transaction (one history entry).
    * Resolves `true` when positions were applied, `false` when the run was
-   * cancelled or superseded (no model mutation in that case).
+   * cancelled or superseded with no positions to fall back on (no model
+   * mutation in that case).
    */
   run<Options>(engine: LayoutEngine<Options>, opts: RunLayoutOptions<Options>): Promise<boolean>;
-  /** Cancels the in-flight run, if any (no-op otherwise). */
+  /** Cancels the in-flight run, if any (no-op otherwise): discards it entirely, no commit. */
   cancel(): void;
+  /**
+   * Stops the in-flight run early, if any (no-op otherwise), and commits the
+   * most recent positions it streamed via `LayoutContext.reportPreview` as
+   * one transaction — same as a natural settle, just cut short. A run that
+   * never reported preview positions has nothing to commit and behaves like
+   * `cancel`.
+   */
+  stop(): void;
   /** Subscribes to {@link LayoutEventMap} events. */
   on<K extends keyof LayoutEventMap>(
     type: K,
@@ -90,10 +102,20 @@ function applyResult(
   }, options);
 }
 
+interface RunState {
+  stopRequested: boolean;
+  lastPreview: ReadonlyMap<string, Point> | null;
+}
+
 /** Creates a {@link LayoutRunner} attached to `editor`. */
 export function createLayoutRunner(editor: LayoutEditor): LayoutRunner {
   const emitter = new Emitter<LayoutEventMap>();
   let controller: AbortController | null = null;
+  // Owned by the in-flight run; `stop()` mutates it from outside. Read via
+  // the closure-captured `state` inside `run`, not this variable, so a
+  // superseding run resetting it can't race the previous run's own commit
+  // decision (each run only ever inspects its own state object).
+  let currentRunState: RunState | null = null;
 
   return {
     get running() {
@@ -103,6 +125,8 @@ export function createLayoutRunner(editor: LayoutEditor): LayoutRunner {
       controller?.abort();
       const own = new AbortController();
       controller = own;
+      const state: RunState = { stopRequested: false, lastPreview: null };
+      currentRunState = state;
       const graph = snapshotGraph(editor.graph, opts.nodeIds);
       const ctx: LayoutContext = {
         signal: own.signal,
@@ -110,22 +134,49 @@ export function createLayoutRunner(editor: LayoutEditor): LayoutRunner {
           if (own.signal.aborted) return;
           emitter.emit('layout.progress', { layout: engine.id, ratio });
         },
+        reportPreview: (positions) => {
+          if (own.signal.aborted) return;
+          state.lastPreview = positions;
+          emitter.emit('layout.preview', { layout: engine.id, positions });
+        },
       };
-      let result: LayoutResult;
+      let result: LayoutResult | undefined;
       try {
         result = await engine.compute(graph, opts.options, ctx);
       } catch (error) {
-        if (own.signal.aborted) return false;
-        throw error;
+        if (!own.signal.aborted) throw error;
       } finally {
         if (controller === own) controller = null;
+        if (currentRunState === state) currentRunState = null;
       }
-      if (own.signal.aborted) return false;
-      applyResult(editor, result, opts.coalesceKey);
+
+      if (own.signal.aborted) {
+        // stop(): commit the engine's own (possibly partial) return value if
+        // it has one, else fall back to the last streamed preview. cancel()
+        // leaves `stopRequested` false, so this is always `null` — same
+        // discard-everything behavior as before stop() existed.
+        const positions = state.stopRequested
+          ? result && result.positions.size > 0
+            ? result.positions
+            : state.lastPreview
+          : null;
+        if (!positions || positions.size === 0) return false;
+        applyResult(editor, { positions }, opts.coalesceKey);
+        emitter.emit('layout.completed', { layout: engine.id });
+        return true;
+      }
+
+      // Not aborted: compute() either resolved (result is set) or threw and
+      // we already rethrew above — result is always defined here.
+      applyResult(editor, result!, opts.coalesceKey);
       emitter.emit('layout.completed', { layout: engine.id });
       return true;
     },
     cancel() {
+      controller?.abort();
+    },
+    stop() {
+      if (currentRunState) currentRunState.stopRequested = true;
       controller?.abort();
     },
     on: (type, handler) => emitter.on(type, handler),

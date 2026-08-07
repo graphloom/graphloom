@@ -169,6 +169,129 @@ it('resolves false and leaves the model untouched when cancelled before the engi
   expect(runner.running).toBe(false);
 });
 
+it('forwards engine preview reports', async () => {
+  const { editor, runner } = setup();
+  editor.execute(commands.nodeAdd({ id: 'a' }));
+  const preview = vi.fn();
+  runner.on('layout.preview', preview);
+  const engine: LayoutEngine<void> = {
+    id: 'streaming',
+    async compute(graph, _options, ctx) {
+      ctx.reportPreview(new Map(graph.nodes.map((n) => [n.id, { x: 3, y: 4 }])));
+      return { positions: new Map(graph.nodes.map((n) => [n.id, { x: 3, y: 4 }])) };
+    },
+  };
+
+  await runner.run(engine, { options: undefined });
+
+  expect(preview).toHaveBeenCalledWith({
+    layout: 'streaming',
+    positions: new Map([['a', { x: 3, y: 4 }]]),
+  });
+});
+
+it('stop() commits the last streamed preview positions instead of discarding', async () => {
+  const { editor, history, runner } = setup();
+  editor.execute(commands.nodeAdd({ id: 'a' }));
+  const gate = defer<void>();
+  const engine: LayoutEngine<void> = {
+    id: 'streaming',
+    async compute(graph, _options, ctx) {
+      ctx.reportPreview(new Map(graph.nodes.map((n) => [n.id, { x: 42, y: 7 }])));
+      await gate.promise;
+      throw new Error('cancelled mid-flight — should never surface');
+    },
+  };
+
+  const run = runner.run(engine, { options: undefined });
+  runner.stop();
+  gate.resolve();
+  const applied = await run;
+
+  expect(applied).toBe(true);
+  // center {42,7} -> top-left with default 100x40 size: {42-50, 7-20}.
+  expect(editor.graph.getNode('a')?.position).toEqual({ x: -8, y: -13 });
+  expect(history.canUndo).toBe(true);
+  expect(history.undo()).toBe(true); // one entry, same as a settled run
+});
+
+it('stop() prefers the engine own partial return value over a stale preview snapshot', async () => {
+  const { editor, runner } = setup();
+  editor.execute(commands.nodeAdd({ id: 'a' }));
+  const engine: LayoutEngine<void> = {
+    id: 'settles-on-abort',
+    async compute(graph, _options, ctx) {
+      ctx.reportPreview(new Map(graph.nodes.map((n) => [n.id, { x: 1, y: 1 }])));
+      await Promise.resolve(); // suspend so the test can call stop() first
+      return { positions: new Map(graph.nodes.map((n) => [n.id, { x: 99, y: 99 }])) };
+    },
+  };
+
+  const run = runner.run(engine, { options: undefined });
+  runner.stop();
+  const applied = await run;
+
+  expect(applied).toBe(true);
+  expect(editor.graph.getNode('a')?.position).toEqual({ x: 49, y: 79 });
+});
+
+it('stop() is a no-op when nothing is running', () => {
+  const { runner } = setup();
+  expect(() => runner.stop()).not.toThrow();
+  expect(runner.running).toBe(false);
+});
+
+it('ignores progress/preview reports made after the run is cancelled', async () => {
+  const { editor, runner } = setup();
+  editor.execute(commands.nodeAdd({ id: 'a' }));
+  const progress = vi.fn();
+  const preview = vi.fn();
+  runner.on('layout.progress', progress);
+  runner.on('layout.preview', preview);
+  const gate = defer<void>();
+  const engine: LayoutEngine<void> = {
+    id: 'reports-after-abort',
+    async compute(graph, _options, ctx) {
+      ctx.signal.addEventListener('abort', () => {
+        ctx.reportProgress(1);
+        ctx.reportPreview(new Map(graph.nodes.map((n) => [n.id, { x: 1, y: 1 }])));
+      });
+      await gate.promise;
+      return { positions: new Map() };
+    },
+  };
+
+  const run = runner.run(engine, { options: undefined });
+  runner.cancel();
+  gate.resolve();
+  await run;
+
+  expect(progress).not.toHaveBeenCalled();
+  expect(preview).not.toHaveBeenCalled();
+});
+
+it('stop() with no preview reported behaves like cancel — nothing to commit', async () => {
+  const { editor, runner } = setup();
+  editor.execute(commands.nodeAdd({ id: 'a' }));
+  const before = editor.graph.getNode('a')!.position;
+  const gate = defer<void>();
+  const engine: LayoutEngine<void> = {
+    id: 'silent',
+    async compute() {
+      await gate.promise;
+      throw new Error('discarded');
+    },
+  };
+
+  const run = runner.run(engine, { options: undefined });
+  runner.stop();
+  gate.resolve();
+  const applied = await run;
+
+  expect(applied).toBe(false);
+  expect(editor.graph.getNode('a')?.position).toEqual(before);
+});
+
 it('cancels an in-flight run when a new one starts — only one run at a time', async () => {
   const { editor, runner } = setup();
   editor.execute(commands.nodeAdd({ id: 'a' }));

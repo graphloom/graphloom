@@ -27,7 +27,11 @@ class FakeWorker implements WorkerLike {
   }
 }
 
-const ctx: LayoutContext = { signal: new AbortController().signal, reportProgress: () => {} };
+const ctx: LayoutContext = {
+  signal: new AbortController().signal,
+  reportProgress: () => {},
+  reportPreview: () => {},
+};
 
 function node(id: string): LayoutGraph['nodes'][number] {
   return { id, position: { x: 0, y: 0 }, size: { width: 100, height: 40 } };
@@ -53,12 +57,28 @@ it('forwards progress reports from the worker to ctx.reportProgress', async () =
   const localCtx: LayoutContext = {
     signal: new AbortController().signal,
     reportProgress: (ratio) => seen.push(ratio),
+    reportPreview: () => {},
   };
   const engine = createWorkerEngine('force', new FakeWorker());
 
   await engine.compute({ nodes: [node('a'), node('b')], edges: [] }, { iterations: 20 }, localCtx);
 
   expect(seen.length).toBeGreaterThan(0);
+});
+
+it('forwards preview positions from the worker to ctx.reportPreview', async () => {
+  const seen: Array<ReadonlyMap<string, unknown>> = [];
+  const localCtx: LayoutContext = {
+    signal: new AbortController().signal,
+    reportProgress: () => {},
+    reportPreview: (positions) => seen.push(positions),
+  };
+  const engine = createWorkerEngine('force', new FakeWorker());
+
+  await engine.compute({ nodes: [node('a'), node('b')], edges: [] }, { iterations: 20 }, localCtx);
+
+  expect(seen.length).toBeGreaterThan(0);
+  expect(seen[0]?.size).toBe(2);
 });
 
 it('does not cross-talk between two concurrent runs on the same worker', async () => {
@@ -86,7 +106,11 @@ it('resolves immediately on abort, posting a cancel message and not waiting for 
     removeEventListener: () => {},
   };
   const engine = createWorkerEngine('grid', worker);
-  const localCtx: LayoutContext = { signal: controller.signal, reportProgress: () => {} };
+  const localCtx: LayoutContext = {
+    signal: controller.signal,
+    reportProgress: () => {},
+    reportPreview: () => {},
+  };
 
   const pending = engine.compute({ nodes: [], edges: [] }, {}, localCtx);
   controller.abort();

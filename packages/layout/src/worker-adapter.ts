@@ -23,8 +23,12 @@ let nextRunId = 0;
  * run id, so concurrent/successive `compute` calls don't cross-talk.
  *
  * Cancellation (`ctx.signal`) posts a `cancel` message and resolves
- * immediately with an empty result — the runner discards it either way
- * (T01 contract), so there's no need to wait for the worker's acknowledgment.
+ * immediately with an empty result — the runner discards it on a plain
+ * cancel anyway (T01 contract), so there's no need to wait for the worker's
+ * acknowledgment. On a `LayoutRunner.stop()` (live-preview commit) the
+ * runner instead falls back to the last `preview` message this adapter
+ * forwarded via `ctx.reportPreview` — whatever the worker had streamed as of
+ * the abort, not a fresh snapshot at the exact abort instant.
  */
 export function createWorkerEngine(engineId: string, worker: WorkerLike): LayoutEngine<unknown> {
   return {
@@ -41,6 +45,10 @@ export function createWorkerEngine(engineId: string, worker: WorkerLike): Layout
           if (response.runId !== runId) return;
           if (response.kind === 'progress') {
             ctx.reportProgress(response.ratio);
+            return;
+          }
+          if (response.kind === 'preview') {
+            ctx.reportPreview(response.positions);
             return;
           }
           cleanup();

@@ -87,6 +87,34 @@ it('forwards progress reports before the result', async () => {
   expect(posted[1]?.kind).toBe('result');
 });
 
+it('forwards preview positions before the result', async () => {
+  const engines = new Map<string, LayoutEngine<never>>([
+    [
+      'previewing',
+      {
+        id: 'previewing',
+        async compute(graph: LayoutGraph, _options: never, ctx: LayoutContext) {
+          ctx.reportPreview(new Map([['a', { x: 1, y: 2 }]]));
+          return { positions: new Map() };
+        },
+      } as LayoutEngine<never>,
+    ],
+  ]);
+  const request: WorkerRequest = {
+    kind: 'run',
+    runId: 6,
+    engineId: 'previewing',
+    graph: { nodes: [], edges: [] },
+    options: {},
+  };
+  const posted: WorkerResponse[] = [];
+
+  await handleWorkerRequest(request, engines, (r) => posted.push(r), new Map());
+
+  expect(posted[0]).toEqual({ kind: 'preview', runId: 6, positions: new Map([['a', { x: 1, y: 2 }]]) });
+  expect(posted[1]?.kind).toBe('result');
+});
+
 it('cancel aborts the matching in-flight run via its controller', async () => {
   let sawAbort = false;
   const gate = Promise.resolve();

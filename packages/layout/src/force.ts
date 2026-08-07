@@ -20,20 +20,27 @@ interface SimNode {
   y: number;
 }
 
+function snapshot(nodes: readonly SimNode[]): Map<string, Point> {
+  const positions = new Map<string, Point>();
+  for (const n of nodes) positions.set(n.id, { x: n.x, y: n.y });
+  return positions;
+}
+
 /**
  * Force-directed layout via {@link https://d3js.org/d3-force d3-force}.
- * One-shot: runs `iterations` simulation ticks synchronously and returns the
- * settled positions — the live-preview mode from the spec (positions
- * streamed to an ephemeral, non-committing overlay; commit on settle or on
- * an explicit stop, as opposed to cancel's discard) needs a runner
- * extension that doesn't exist yet and is deferred with worker execution
- * (Decision Log, 2026-08-07) — there's no consumer yet to design it against.
+ * Runs `iterations` simulation ticks synchronously and returns the settled
+ * positions. Every 10 ticks it also streams the interim positions via
+ * `ctx.reportPreview` — the live-preview mode from the spec: a caller can
+ * render those as an ephemeral, non-committing overlay while the run is in
+ * flight, then either let it settle naturally or call `LayoutRunner.stop()`
+ * to commit whatever's on screen early (as opposed to `cancel()`, which
+ * discards). This engine doesn't need to know which one happens — it just
+ * streams positions and honors `ctx.signal` like any other engine.
  *
  * Simulation nodes are seeded from each node's current center, so the run is
  * deterministic without needing a seeded RNG: d3-force only randomizes
  * initial positions that are otherwise unset, and every node here already
- * has one. Cancellation (`ctx.signal`) stops early; the runner discards the
- * partial result like any other cancelled run (T01 contract).
+ * has one.
  */
 export const forceLayout: LayoutEngine<ForceLayoutOptions> = {
   id: 'force',
@@ -63,11 +70,12 @@ export const forceLayout: LayoutEngine<ForceLayoutOptions> = {
     for (let i = 0; i < iterations; i++) {
       if (ctx.signal.aborted) break;
       simulation.tick();
-      if (i % 10 === 0) ctx.reportProgress(i / iterations);
+      if (i % 10 === 0) {
+        ctx.reportProgress(i / iterations);
+        ctx.reportPreview(snapshot(nodes));
+      }
     }
 
-    const positions = new Map<string, Point>();
-    for (const n of nodes) positions.set(n.id, { x: n.x, y: n.y });
-    return { positions };
+    return { positions: snapshot(nodes) };
   },
 };

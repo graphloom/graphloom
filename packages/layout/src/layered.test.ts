@@ -5,6 +5,7 @@ import { layeredLayout } from './layered.js';
 const ctx: LayoutContext = {
   signal: new AbortController().signal,
   reportProgress: () => {},
+  reportPreview: () => {},
 };
 
 function node(id: string): LayoutGraph['nodes'][number] {
