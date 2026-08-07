@@ -9,15 +9,21 @@
     "directory": "packages/layout"
   },
   "type": "module",
-  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js"
     }
   },
   "files": [
     "dist"
+  ],
+  "sideEffects": [
+    "./dist/worker.js"
   ],
   "publishConfig": {
     "access": "public"

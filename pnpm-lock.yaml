@@ -157,6 +157,9 @@ importers:
       '@graphloom/interaction':
         specifier: workspace:*
         version: link:../../packages/interaction
+      '@graphloom/layout':
+        specifier: workspace:*
+        version: link:../../packages/layout
       '@graphloom/rendering':
         specifier: workspace:*
         version: link:../../packages/rendering

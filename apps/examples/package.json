@@ -8,6 +8,7 @@
     "@graphloom/core": "workspace:*",
     "@graphloom/history": "workspace:*",
     "@graphloom/interaction": "workspace:*",
+    "@graphloom/layout": "workspace:*",
     "@graphloom/rendering": "workspace:*",
     "@graphloom/themes": "workspace:*"
   },

@@ -17,7 +17,10 @@ const d3DomBans = [
 }));
 
 const noDeepImports = {
-  group: ['@graphloom/*/*'],
+  // '!@graphloom/layout/worker' is a declared package.json subpath export
+  // (P8 worker-execution follow-up), not an internal deep import — every
+  // other '@graphloom/*/*' path stays banned.
+  group: ['@graphloom/*/*', '!@graphloom/layout/worker'],
   message: 'No cross-package deep imports — use the package public entry point.',
 };
 

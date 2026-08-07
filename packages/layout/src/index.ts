@@ -24,3 +24,14 @@ export {
 } from './simple.js';
 export { layeredLayout, type LayeredDirection, type LayeredLayoutOptions } from './layered.js';
 export { forceLayout, type ForceLayoutOptions } from './force.js';
+export { createWorkerEngine, type WorkerLike } from './worker-adapter.js';
+export type {
+  WorkerCancelRequest,
+  WorkerErrorResponse,
+  WorkerProgressResponse,
+  WorkerRequest,
+  WorkerResponse,
+  WorkerResultResponse,
+  WorkerRunRequest,
+} from './worker-protocol.js';
+export { BUILTIN_ENGINES, handleWorkerRequest } from './worker.js';

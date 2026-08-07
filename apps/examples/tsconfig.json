@@ -16,6 +16,12 @@
       "@graphloom/interaction": [
         "../../packages/interaction/src/index.ts"
       ],
+      "@graphloom/layout": [
+        "../../packages/layout/src/index.ts"
+      ],
+      "@graphloom/layout/worker": [
+        "../../packages/layout/src/worker.ts"
+      ],
       "@graphloom/rendering": [
         "../../packages/rendering/src/index.ts"
       ],
@@ -39,6 +45,9 @@
     },
     {
       "path": "../../packages/interaction"
+    },
+    {
+      "path": "../../packages/layout"
     },
     {
       "path": "../../packages/rendering"
