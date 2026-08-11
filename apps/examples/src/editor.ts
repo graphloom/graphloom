@@ -5,6 +5,7 @@ import { commands, createGraph, type Point } from '@graphloom/core';
 import { createClipboard } from '@graphloom/clipboard';
 import { createHistory } from '@graphloom/history';
 import {
+  createCanvasRenderer,
   createLayoutTransition,
   createSvgRenderer,
   edgeAnchor,
@@ -54,6 +55,12 @@ app.innerHTML = `
     <span>undo: <span data-testid="can-undo">no</span></span>
     <button data-testid="run-layout" type="button">Run layout (animated)</button>
     <span>transitioning: <span data-testid="transitioning">no</span></span>
+    <label>renderer:
+      <select data-testid="renderer">
+        <option value="svg">SVG</option>
+        <option value="canvas">Canvas</option>
+      </select>
+    </label>
     <span style="color:#8892a6">double-click: add node · drag port: connect · right-click: menu</span>
   </header>
   <div id="stage">
@@ -109,6 +116,16 @@ history.clear(); // seeding is not user work — undo starts empty
 
 const canvas = document.querySelector('#canvas') as HTMLElement;
 const host = mountRenderer(editor, createSvgRenderer(), canvas);
+
+// P9-T01 close-out: proves "swap SVG↔Canvas mid-session lossless" through a
+// real consumer — setRenderer() destroys the old backend, mounts the new
+// one, and forces a full repaint (ADR-0002 losslessness); nothing above the
+// Renderer contract (model, selection, history) is touched by the swap.
+document.querySelector('[data-testid="renderer"]')!.addEventListener('change', (e) => {
+  const next = (e.target as HTMLSelectElement).value;
+  host.setRenderer(next === 'canvas' ? createCanvasRenderer() : createSvgRenderer());
+});
+
 const engine = new InteractionEngine(
   { editor, scene: host.scene, viewport: host.viewport, spatial: host.index, history },
   { snap: { gridSize: 20 } },
