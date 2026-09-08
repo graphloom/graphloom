@@ -81,6 +81,18 @@ const shapePath = (item: RenderItem & { kind: 'shape' }): Path2D => {
   }
 };
 
+/**
+ * Fills the path unless the resolved fill is `none`. SVG honours
+ * `fill="none"`; a canvas `fillStyle = 'none'` is an invalid colour that is
+ * silently ignored, leaving the previous fill in force — so an unguarded
+ * `fill()` here paints stroked-only shapes (e.g. the `api` glyph) solid black.
+ */
+const fillPath = (ctx: CanvasRenderingContext2D, fill: string, path: Path2D): void => {
+  if (fill === 'none') return;
+  ctx.fillStyle = fill;
+  ctx.fill(path);
+};
+
 /** At dot LOD strokes are noise (matches the SVG backend); solid stroke/dash otherwise. */
 const strokeIfNeeded = (
   ctx: CanvasRenderingContext2D,
@@ -88,11 +100,27 @@ const strokeIfNeeded = (
   lod: LodLevel,
   path: Path2D,
 ): void => {
-  if (lod === 'dot') return;
+  if (lod === 'dot' || style.stroke === 'none') return;
   ctx.strokeStyle = style.stroke;
   ctx.lineWidth = style.strokeWidth;
   ctx.setLineDash(style.strokeDasharray ? [...style.strokeDasharray] : []);
   ctx.stroke(path);
+};
+
+/**
+ * Draws the image scaled to fit `rect` preserving aspect ratio, centred —
+ * matching the SVG backend's explicit `preserveAspectRatio="xMidYMid meet"`
+ * on `<image>`. A bare `drawImage(img, x, y, w, h)` stretches to fill.
+ */
+const drawImageContained = (
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  rect: Rect,
+): void => {
+  const scale = Math.min(rect.width / img.naturalWidth, rect.height / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
+  ctx.drawImage(img, rect.x + (rect.width - w) / 2, rect.y + (rect.height - h) / 2, w, h);
 };
 
 /** Paints one render item. Isolated by `save`/`restore` so styles never leak between items. */
@@ -110,8 +138,7 @@ const drawItem = (
     case 'shape':
       withRotation(ctx, item.rect, item.rotation, item.pivot, () => {
         const path = shapePath(item);
-        ctx.fillStyle = item.style.fill;
-        ctx.fill(path);
+        fillPath(ctx, item.style.fill, path);
         strokeIfNeeded(ctx, item.style, lod, path);
       });
       break;
@@ -132,7 +159,7 @@ const drawItem = (
       const img = loadImage(item.href);
       if (img) {
         withRotation(ctx, item.rect, item.rotation, item.pivot, () => {
-          ctx.drawImage(img, item.rect.x, item.rect.y, item.rect.width, item.rect.height);
+          drawImageContained(ctx, img, item.rect);
         });
       }
       break;
@@ -143,16 +170,14 @@ const drawItem = (
       withRotation(ctx, item.rect, item.rotation, item.pivot, () => {
         const path = new Path2D();
         path.roundRect(item.rect.x, item.rect.y, item.rect.width, item.rect.height, 4);
-        ctx.fillStyle = item.style.fill;
-        ctx.fill(path);
+        fillPath(ctx, item.style.fill, path);
         strokeIfNeeded(ctx, item.style, lod, path);
       });
       break;
     case 'port': {
       const path = new Path2D();
       path.arc(item.center.x, item.center.y, item.radius, 0, Math.PI * 2);
-      ctx.fillStyle = item.style.fill;
-      ctx.fill(path);
+      fillPath(ctx, item.style.fill, path);
       strokeIfNeeded(ctx, item.style, lod, path);
       break;
     }
@@ -211,6 +236,12 @@ export function createCanvasRenderer(options: CanvasRendererOptions = {}): Rende
   let cssWidth = -1;
   let cssHeight = -1;
   let dpr = -1;
+  // The viewport the canvas currently reflects. A pan/zoom moves every pixel
+  // but dirties no items (FrameBuilder keeps object identity across a viewport
+  // change), so an immediate-mode backend must treat any viewport change as a
+  // full-frame invalidation — the retained-mode SVG backend gets this for free
+  // by updating one <g transform> and letting the browser recomposite.
+  let paintedViewport: { x: number; y: number; zoom: number } | null = null;
 
   /** Repaints with whatever frame was last given (image finished loading async). */
   const repaint = (): void => {
@@ -253,15 +284,25 @@ export function createCanvasRenderer(options: CanvasRendererOptions = {}): Rende
     const currentById = new Map(frame.items.map((item) => [item.id, item] as const));
     const dirtyCount =
       frame.dirty.added.length + frame.dirty.updated.length + frame.dirty.removed.length;
-    if (!forceFull && dirtyCount === 0) {
+    const { x, y, zoom } = frame.viewport;
+    const viewportChanged =
+      !paintedViewport ||
+      paintedViewport.x !== x ||
+      paintedViewport.y !== y ||
+      paintedViewport.zoom !== zoom;
+
+    if (!forceFull && !viewportChanged && dirtyCount === 0) {
       previousItems = currentById;
       return;
     }
 
-    const { x, y, zoom } = frame.viewport;
     ctx.setTransform(zoom * dpr, 0, 0, zoom * dpr, x * dpr, y * dpr);
+    paintedViewport = { x, y, zoom };
 
-    const full = forceFull || dirtyCount / Math.max(frame.items.length, 1) > dirtyRegionThreshold;
+    const full =
+      forceFull ||
+      viewportChanged ||
+      dirtyCount / Math.max(frame.items.length, 1) > dirtyRegionThreshold;
     if (full) {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -311,6 +352,7 @@ export function createCanvasRenderer(options: CanvasRendererOptions = {}): Rende
       cssWidth = -1;
       cssHeight = -1;
       dpr = -1;
+      paintedViewport = null;
       previousItems = new Map();
       host.appendChild(canvas);
     },
@@ -337,6 +379,7 @@ export function createCanvasRenderer(options: CanvasRendererOptions = {}): Rende
       ctx = null;
       host = null;
       lastFrame = null;
+      paintedViewport = null;
       previousItems = new Map();
       markerPaths.clear();
       images.clear();

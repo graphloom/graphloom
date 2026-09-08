@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCanvasRenderer } from './canvas.js';
 import { rendererConformanceChecks } from './conformance.js';
 import type { SceneFrame } from './frame.js';
@@ -20,6 +20,11 @@ const emptyFrame = (devicePixelRatio: number): SceneFrame => ({
   viewport: { x: 0, y: 0, zoom: 1 },
   devicePixelRatio,
   lod: 'full',
+});
+
+const framePanned = (frame: SceneFrame, viewport: SceneFrame['viewport']): SceneFrame => ({
+  ...frame,
+  viewport,
 });
 
 describe('Canvas renderer conformance (P9-T01 acceptance)', () => {
@@ -93,6 +98,56 @@ describe('Canvas renderer structure and HiDPI sizing', () => {
     const canvas = element.querySelector('canvas') as HTMLCanvasElement;
     expect(canvas.width).toBe(1);
     expect(canvas.height).toBe(1);
+    renderer.destroy();
+    element.remove();
+  });
+});
+
+describe('Canvas renderer viewport invalidation (P9-T02)', () => {
+  // A pan/zoom moves every pixel but marks no items dirty (FrameBuilder keeps
+  // object identity across a viewport change), so an immediate-mode backend
+  // must repaint the whole frame — otherwise the partial dirty-region path (or
+  // the zero-dirty early-return) leaves the previous viewport's pixels on
+  // screen. jsdom has no 2D context, so this drives a recording fake and
+  // asserts the decision, not the pixels.
+  const calls: string[] = [];
+  const fakeCtx = new Proxy(
+    {},
+    {
+      get(_t, prop: string) {
+        return (...args: unknown[]) => {
+          calls.push(`${prop}(${args.join(',')})`);
+          if (prop === 'getTransform') return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+          return undefined;
+        };
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D;
+
+  afterEach(() => {
+    calls.length = 0;
+    vi.restoreAllMocks();
+  });
+
+  it('forces a full clear+repaint when the viewport changes with no dirty items', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeCtx);
+    const element = stubbedElement(800, 600);
+    const renderer = createCanvasRenderer();
+    renderer.mount(element);
+
+    renderer.render(emptyFrame(1)); // initial paint at x:0 y:0 zoom:1
+    calls.length = 0;
+
+    // Same scene, panned viewport, zero dirty items.
+    renderer.render(framePanned(emptyFrame(1), { x: 120, y: -40, zoom: 2 }));
+
+    // Full-frame path: identity reset + full-canvas clearRect (partial path
+    // clears only the dirty region and also calls clip()).
+    expect(calls).toContain('clearRect(0,0,800,600)');
+    expect(calls.some((c) => c.startsWith('clip('))).toBe(false);
+    // The new viewport transform was applied (zoom 2, dpr 1).
+    expect(calls).toContain('setTransform(2,0,0,2,120,-40)');
+
     renderer.destroy();
     element.remove();
   });

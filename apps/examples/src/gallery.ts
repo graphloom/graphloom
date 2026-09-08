@@ -3,6 +3,7 @@
 // Deterministic on purpose — Playwright screenshots this page per theme.
 import { commands, createGraph, type Theme } from '@graphloom/core';
 import {
+  createCanvasRenderer,
   createRouters,
   createSvgRenderer,
   mountRenderer,
@@ -178,8 +179,20 @@ editor.transact(() => {
 });
 
 const canvas = document.querySelector('#canvas') as HTMLElement;
-const svg = createSvgRenderer();
-const host = mountRenderer(editor, svg, canvas, {
+
+// P9-T02 renderer parity: ?renderer=canvas mounts the Canvas backend instead
+// of SVG; ?parity=1 turns off the two SVG-only presentation extras — the
+// P3-T09 background grid and the default unbound-edge arrowhead — which are
+// not part of the Renderer contract (Canvas parity for those is deferred to
+// P9-T05, where the minimap needs a Canvas grid regardless). Default
+// /gallery.html (no params) is byte-identical to before — P7 baselines stay put.
+const params = new URLSearchParams(location.search);
+const parity = params.get('parity') === '1';
+const svg =
+  params.get('renderer') === 'canvas'
+    ? null
+    : createSvgRenderer(parity ? { edgeArrows: false, grid: { visible: false } } : {});
+const host = mountRenderer(editor, svg ?? createCanvasRenderer(), canvas, {
   // Obstacle-aware orthogonal routing on (P7-T05); default demos keep it off.
   scene: { routers: createRouters({ avoidBodies: true }) },
   // The showcase stays at full LOD regardless of the fitted zoom.
@@ -198,7 +211,7 @@ host.viewport.zoomToFit(host.scene.bounds(), 40);
 const themeName = document.querySelector('#theme-name') as HTMLElement;
 const applyTheme = (theme: Theme): void => {
   host.scene.setTheme(theme);
-  svg.setGrid({ color: theme.tokens.grid });
+  if (!parity) svg?.setGrid({ color: theme.tokens.grid });
   // Page chrome themes through the CSS-variable projection (spec §Theming).
   for (const [name, value] of Object.entries(themeToCssVariables(theme))) {
     document.documentElement.style.setProperty(name, value);
