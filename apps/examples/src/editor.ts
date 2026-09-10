@@ -14,6 +14,7 @@ import {
   type Rect,
 } from '@graphloom/rendering';
 import { createLayoutRunner, gridLayout } from '@graphloom/layout';
+import { minimap } from '@graphloom/minimap';
 import {
   attachInteraction,
   chordOf,
@@ -46,6 +47,13 @@ app.innerHTML = `
       text-align: left; font: inherit; cursor: pointer;
     }
     #menu button:hover { background: #e8eefc; }
+    #minimap {
+      position: absolute; right: 12px; bottom: 12px; width: 180px; height: 130px;
+      background: rgba(247,249,252,.9); border: 1px solid #c6cdda; border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(26,31,54,.12); cursor: crosshair; z-index: 5;
+    }
+    #minimap[hidden] { display: none; }
+    .minimap-indicator { border: 1.5px solid #3b5bd9; background: rgba(59,91,217,.1); }
   </style>
   <header>
     <strong>GraphLoom editor</strong>
@@ -61,12 +69,14 @@ app.innerHTML = `
         <option value="canvas">Canvas</option>
       </select>
     </label>
+    <label><input type="checkbox" data-testid="minimap-toggle" checked /> minimap</label>
     <span style="color:#8892a6">double-click: add node · drag port: connect · right-click: menu</span>
   </header>
   <div id="stage">
     <div id="canvas" data-testid="canvas"></div>
     <svg id="overlay"></svg>
     <div id="menu" data-testid="menu"></div>
+    <div id="minimap" data-testid="minimap"></div>
   </div>
 `;
 
@@ -131,6 +141,23 @@ const engine = new InteractionEngine(
   { snap: { gridSize: 20 } },
 );
 attachInteraction(engine, canvas);
+
+// P9-T05 close-out: the minimap as an installable plugin. `editor.use` /
+// `editor.unuse` mount and tear it down; the checkbox proves the acceptance's
+// "installable/uninstallable as a plugin" in a real consumer.
+const minimapEl = document.querySelector('#minimap') as HTMLElement;
+const minimapToggle = document.querySelector('[data-testid="minimap-toggle"]') as HTMLInputElement;
+const syncMinimap = (): void => {
+  const on = minimapToggle.checked;
+  minimapEl.hidden = !on;
+  if (on && !editor.plugins().includes('minimap')) {
+    editor.use(minimap({ host, mount: minimapEl, options: { indicatorClassName: 'minimap-indicator' } }));
+  } else if (!on && editor.plugins().includes('minimap')) {
+    editor.unuse('minimap');
+  }
+};
+minimapToggle.addEventListener('change', syncMinimap);
+syncMinimap();
 
 // ---- layout transitions (P8-T06): commit final positions immediately via
 // the layout runner, then play a visual-only ease from old to new. A drag

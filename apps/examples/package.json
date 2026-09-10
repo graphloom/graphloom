@@ -9,6 +9,7 @@
     "@graphloom/history": "workspace:*",
     "@graphloom/interaction": "workspace:*",
     "@graphloom/layout": "workspace:*",
+    "@graphloom/minimap": "workspace:*",
     "@graphloom/rendering": "workspace:*",
     "@graphloom/themes": "workspace:*"
   },

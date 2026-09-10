@@ -35,7 +35,7 @@ test.beforeEach(async ({ page }) => {
 test('swap SVG→Canvas mid-session is lossless: selection, hit testing, and interaction survive', async ({
   page,
 }) => {
-  await expect(page.locator('[data-graphloom="svg"]')).toBeVisible();
+  await expect(page.locator('#canvas [data-graphloom="svg"]')).toBeVisible();
 
   // Off-center: the label <text> sits over the node center (same convention
   // as rendering.spec.ts's hit-test case).
@@ -44,8 +44,8 @@ test('swap SVG→Canvas mid-session is lossless: selection, hit testing, and int
   expect(await selectedIds(page)).toEqual(['alpha']);
 
   await page.getByTestId('renderer').selectOption('canvas');
-  await expect(page.locator('[data-graphloom="canvas"]')).toBeVisible();
-  await expect(page.locator('[data-graphloom="svg"]')).toHaveCount(0);
+  await expect(page.locator('#canvas [data-graphloom="canvas"]')).toBeVisible();
+  await expect(page.locator('#canvas [data-graphloom="svg"]')).toHaveCount(0);
 
   // The swap touches nothing above the Renderer contract — selection is untouched.
   await expect(page.getByTestId('selected')).toHaveText('1');
@@ -68,14 +68,18 @@ test('swap SVG→Canvas mid-session is lossless: selection, hit testing, and int
 
   // Round trip: swapping back to SVG is equally lossless.
   await page.getByTestId('renderer').selectOption('svg');
-  await expect(page.locator('[data-graphloom="svg"]')).toBeVisible();
-  await expect(page.locator('[data-graphloom="canvas"]')).toHaveCount(0);
+  await expect(page.locator('#canvas [data-graphloom="svg"]')).toBeVisible();
+  await expect(page.locator('#canvas [data-graphloom="canvas"]')).toHaveCount(0);
   expect(await selectedIds(page)).toEqual(['gamma']);
   await expect(page.getByTestId('can-undo')).toHaveText('no'); // no history entries from any of this
 });
 
 test('visual baseline: Canvas backend paints the demo graph', async ({ page }) => {
+  // The minimap (P9-T05) is its own Canvas surface in the corner — hide it,
+  // and shoot the stage only (not the page chrome), so this stays a clean
+  // proof of the main backend's paint dispatch.
+  await page.getByTestId('minimap-toggle').uncheck();
   await page.getByTestId('renderer').selectOption('canvas');
-  await expect(page.locator('[data-graphloom="canvas"]')).toBeVisible();
-  await expect(page).toHaveScreenshot('editor-canvas.png');
+  await expect(page.locator('#canvas [data-graphloom="canvas"]')).toBeVisible();
+  await expect(page.locator('#stage')).toHaveScreenshot('editor-canvas.png');
 });

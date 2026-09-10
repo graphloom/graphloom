@@ -56,7 +56,9 @@ export function createMinimap(config: MinimapConfig): MinimapHandle {
 
   const root = document.createElement('div');
   root.dataset.graphloom = 'minimap';
-  root.style.cssText = 'position:relative;touch-action:none';
+  // overflow:hidden clips the indicator to the frame when the main view is
+  // panned/zoomed past the graph bounds (standard minimap behaviour).
+  root.style.cssText = 'position:relative;overflow:hidden;touch-action:none';
   if (options.className !== undefined) root.className = options.className;
   mount.appendChild(root);
 

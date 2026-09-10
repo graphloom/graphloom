@@ -160,6 +160,9 @@ importers:
       '@graphloom/layout':
         specifier: workspace:*
         version: link:../../packages/layout
+      '@graphloom/minimap':
+        specifier: workspace:*
+        version: link:../../packages/plugins/minimap
       '@graphloom/rendering':
         specifier: workspace:*
         version: link:../../packages/rendering

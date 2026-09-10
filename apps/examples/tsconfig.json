@@ -22,6 +22,9 @@
       "@graphloom/layout/worker": [
         "../../packages/layout/src/worker.ts"
       ],
+      "@graphloom/minimap": [
+        "../../packages/plugins/minimap/src/index.ts"
+      ],
       "@graphloom/rendering": [
         "../../packages/rendering/src/index.ts"
       ],
@@ -48,6 +51,9 @@
     },
     {
       "path": "../../packages/layout"
+    },
+    {
+      "path": "../../packages/plugins/minimap"
     },
     {
       "path": "../../packages/rendering"
