@@ -13,7 +13,8 @@
     "typecheck": "tsc -b",
     "e2e": "playwright test",
     "e2e:a11y": "playwright test e2e/a11y.spec.ts",
-    "bench": "pnpm --filter @graphloom/rendering exec vitest run src/perf.smoke.test.ts",
+    "bench": "playwright test -c playwright.bench.config.ts",
+    "bench:report": "node tools/bench-report.mjs",
     "pkgcheck": "node tools/check-packages.mjs",
     "format": "prettier --write .",
     "prepare": "git config core.hooksPath .githooks"

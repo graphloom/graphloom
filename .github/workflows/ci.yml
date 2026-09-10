@@ -66,3 +66,34 @@ jobs:
           path: |
             playwright-report/
             test-results/
+
+  # Phase Gate G6 (P9-T03): the full ADR-0007 frame budget, its own job so a
+  # slow runner never slows `checks`/`e2e-smoke`. Chromium only, one hardware
+  # profile — the budget is pinned to it.
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec nx run-many -t build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm bench
+      # Writes bench-results/benchmark.json (trend format), then fails the job
+      # on an ADR-0007 budget breach or >10% run-to-run variance.
+      - name: ADR-0007 budget + variance gate
+        run: pnpm bench:report
+      # Every run's numbers + the trend-format file are kept as an artifact
+      # (90-day retention = the persisted trend for now; a github-action-
+      # benchmark dashboard on top is a P9-T03 follow-up once this is green).
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-metrics
+          path: |
+            bench-results/
+            playwright-report/
