@@ -138,6 +138,43 @@ const churn = (cycles: number): void => {
   }
 };
 
+// Editor create → mount → interact → destroy, repeated. Exercises the whole
+// pipeline teardown (scene subscriptions, renderer element maps, ResizeObserver
+// + matchMedia listeners, pending rAF) — a retained reference anywhere shows up
+// as heap growth the spec samples around this (CDP GC + getHeapUsage).
+const lifecycle = (iterations: number): void => {
+  for (let i = 0; i < iterations; i++) {
+    const ed = createGraph();
+    ed.transact(() => {
+      for (let n = 0; n < 30; n++) {
+        ed.execute(
+          commands.nodeAdd({
+            id: `l${n}`,
+            position: { x: (n % 6) * 140, y: Math.floor(n / 6) * 90 },
+            size: { width: 120, height: 48 },
+            data: { label: `L${n}` },
+          }),
+        );
+      }
+      for (let e = 0; e < 40; e++) {
+        ed.execute(commands.edgeAdd({ id: `le${e}`, source: `l${e % 30}`, target: `l${(e * 7 + 1) % 30}` }));
+      }
+    });
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute;width:800px;height:600px';
+    document.body.appendChild(el);
+    const h = mountRenderer(ed, useCanvas ? createCanvasRenderer() : createSvgRenderer(), el);
+    h.viewport.zoomToFit(h.scene.bounds(), 40);
+    h.renderNow();
+    h.viewport.panBy(20, 15);
+    h.renderNow();
+    ed.execute(commands.nodeUpdate('l0', { position: { x: 5, y: 5 } }));
+    h.renderNow();
+    h.destroy();
+    el.remove();
+  }
+};
+
 /** Latency summary for one (scale × backend) run. */
 export interface BenchResults {
   readonly nodes: number;
@@ -155,7 +192,12 @@ export interface BenchResults {
 
 declare global {
   interface Window {
-    __bench: { ready: true; run: () => BenchResults; churn: (cycles: number) => void };
+    __bench: {
+      ready: true;
+      run: () => BenchResults;
+      churn: (cycles: number) => void;
+      lifecycle: (iterations: number) => void;
+    };
   }
 }
-window.__bench = { ready: true, run, churn };
+window.__bench = { ready: true, run, churn, lifecycle };

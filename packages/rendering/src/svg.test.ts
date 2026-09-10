@@ -71,6 +71,21 @@ describe('SVG renderer structure and patching', () => {
     host.destroy();
   });
 
+  it('detached DOM does not accumulate over add/remove churn (P9-T04)', () => {
+    const { editor, host, element } = setup();
+    for (let i = 0; i < 50; i++) {
+      addNode(editor, `n${i}`, 10, 10);
+      host.renderNow();
+      editor.execute(commands.nodeRemove(`n${i}`));
+      host.renderNow();
+    }
+    // Every removed item's element was detached, not just hidden — the
+    // renderer's element map and the DOM both return to empty.
+    expect(itemElements(element)).toHaveLength(0);
+    expect(document.querySelectorAll('svg [data-item]')).toHaveLength(0);
+    host.destroy();
+  });
+
   it('patches only dirty items in place', () => {
     const { editor, host, element } = setup();
     addNode(editor, 'a', 10, 10);

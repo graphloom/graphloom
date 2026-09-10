@@ -281,6 +281,10 @@ export function createCanvasRenderer(options: CanvasRendererOptions = {}): Rende
 
   const paintFrame = (frame: SceneFrame, forceFull: boolean): void => {
     if (!ctx || !canvas) return;
+    // Re-bound as const so the nested repaint helpers below get the non-null
+    // narrowing (a captured `let` doesn't narrow inside a closure).
+    const c = canvas;
+    const g = ctx;
     const currentById = new Map(frame.items.map((item) => [item.id, item] as const));
     const dirtyCount =
       frame.dirty.added.length + frame.dirty.updated.length + frame.dirty.removed.length;
@@ -290,13 +294,72 @@ export function createCanvasRenderer(options: CanvasRendererOptions = {}): Rende
       paintedViewport.x !== x ||
       paintedViewport.y !== y ||
       paintedViewport.zoom !== zoom;
+    const panned = paintedViewport?.zoom === zoom && viewportChanged;
 
     if (!forceFull && !viewportChanged && dirtyCount === 0) {
       previousItems = currentById;
       return;
     }
 
-    ctx.setTransform(zoom * dpr, 0, 0, zoom * dpr, x * dpr, y * dpr);
+    const worldTransform = (): void => {
+      g.setTransform(zoom * dpr, 0, 0, zoom * dpr, x * dpr, y * dpr);
+    };
+    /**
+     * Redraws items intersecting a screen-space rect, clipped to it. The rect
+     * is grown 1px into the blitted region first, so any anti-aliased edge
+     * straddling the pan seam is repainted rather than left doubled.
+     */
+    const paintScreenRect = (sx: number, sy: number, sw: number, sh: number): void => {
+      const world: Rect = {
+        x: (sx - 1 - x) / zoom,
+        y: (sy - 1 - y) / zoom,
+        width: (sw + 2) / zoom,
+        height: (sh + 2) / zoom,
+      };
+      g.save();
+      g.beginPath();
+      g.rect(world.x, world.y, world.width, world.height);
+      g.clip();
+      g.clearRect(world.x, world.y, world.width, world.height);
+      for (const item of frame.items) {
+        if (rectsIntersect(item.bounds, world)) {
+          drawItem(g, item, frame.lod, loadImage, markerPaths);
+        }
+      }
+      g.restore();
+    };
+    const fullRepaint = (): void => {
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, c.width, c.height);
+      worldTransform();
+      for (const item of frame.items) drawItem(g, item, frame.lod, loadImage, markerPaths);
+    };
+
+    // Pure pan (zoom unchanged, nothing dirty): shift the current pixels by the
+    // device-space delta and repaint only the L-shaped strip the shift exposed
+    // — the immediate-mode equivalent of the SVG backend moving one <g
+    // transform> and letting the browser recomposite.
+    if (!forceFull && panned && dirtyCount === 0 && paintedViewport) {
+      const dx = Math.round((x - paintedViewport.x) * dpr);
+      const dy = Math.round((y - paintedViewport.y) * dpr);
+      paintedViewport = { x, y, zoom };
+      if (Math.abs(dx) >= c.width || Math.abs(dy) >= c.height) {
+        // Panned past a full viewport — nothing on screen is worth keeping.
+        fullRepaint();
+      } else {
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.drawImage(c, dx, dy);
+        worldTransform();
+        if (dx > 0) paintScreenRect(0, 0, dx / dpr, cssHeight);
+        else if (dx < 0) paintScreenRect(cssWidth + dx / dpr, 0, -dx / dpr, cssHeight);
+        if (dy > 0) paintScreenRect(0, 0, cssWidth, dy / dpr);
+        else if (dy < 0) paintScreenRect(0, cssHeight + dy / dpr, cssWidth, -dy / dpr);
+      }
+      previousItems = currentById;
+      return;
+    }
+
+    worldTransform();
     paintedViewport = { x, y, zoom };
 
     const full =
@@ -304,11 +367,7 @@ export function createCanvasRenderer(options: CanvasRendererOptions = {}): Rende
       viewportChanged ||
       dirtyCount / Math.max(frame.items.length, 1) > dirtyRegionThreshold;
     if (full) {
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.restore(); // back to the world transform set above
-      for (const item of frame.items) drawItem(ctx, item, frame.lod, loadImage, markerPaths);
+      fullRepaint();
     } else {
       let region: Rect | null = null;
       const grow = (r: Rect): void => {

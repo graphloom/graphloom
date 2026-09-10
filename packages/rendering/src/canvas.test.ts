@@ -152,3 +152,70 @@ describe('Canvas renderer viewport invalidation (P9-T02)', () => {
     element.remove();
   });
 });
+
+describe('Canvas renderer partial-pan blit (P9-T04)', () => {
+  // A pure pan (zoom unchanged, no dirty items) moves every pixel by the same
+  // offset — an immediate-mode backend can shift the existing render with one
+  // drawImage and repaint only the newly-exposed strip, the equivalent of the
+  // SVG backend updating a single <g transform>. jsdom has no 2D context so
+  // this drives the recording fake and asserts the decision, not the pixels.
+  const calls: string[] = [];
+  const fakeCtx = new Proxy(
+    {},
+    {
+      get(_t, prop: string) {
+        return (...args: unknown[]) => {
+          calls.push(
+            `${prop}(${args.map((a) => (a instanceof HTMLCanvasElement ? 'canvas' : a)).join(',')})`,
+          );
+          return undefined;
+        };
+      },
+    },
+  ) as unknown as CanvasRenderingContext2D;
+
+  afterEach(() => {
+    calls.length = 0;
+    vi.restoreAllMocks();
+  });
+
+  it('shifts the existing render and skips the full-canvas clear on a pure pan', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeCtx);
+    const element = stubbedElement(800, 600);
+    const renderer = createCanvasRenderer();
+    renderer.mount(element);
+
+    renderer.render(emptyFrame(1)); // initial paint at x:0 y:0 zoom:1
+    calls.length = 0;
+
+    // Pan right 30, down 20 — same zoom, zero dirty items.
+    renderer.render(framePanned(emptyFrame(1), { x: 30, y: 20, zoom: 1 }));
+
+    // Blit path: shift the current pixels by the device-space delta...
+    expect(calls).toContain('drawImage(canvas,30,20)');
+    // ...and never clear the whole canvas.
+    expect(calls).not.toContain('clearRect(0,0,800,600)');
+
+    renderer.destroy();
+    element.remove();
+  });
+
+  it('falls back to a full repaint when the pan exceeds a full viewport', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeCtx);
+    const element = stubbedElement(800, 600);
+    const renderer = createCanvasRenderer();
+    renderer.mount(element);
+
+    renderer.render(emptyFrame(1));
+    calls.length = 0;
+
+    // Pan further than the canvas is wide — nothing on screen can be reused.
+    renderer.render(framePanned(emptyFrame(1), { x: 900, y: 0, zoom: 1 }));
+
+    expect(calls).toContain('clearRect(0,0,800,600)');
+    expect(calls).not.toContain('drawImage(canvas,900,0)');
+
+    renderer.destroy();
+    element.remove();
+  });
+});

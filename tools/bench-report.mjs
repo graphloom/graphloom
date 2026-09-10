@@ -6,7 +6,7 @@
 //   2. gates the job on:
 //        - the ADR-0007 frame budget for the SVG backend at 500/2000 (the
 //          framework default; the budget in the ADR was written against it);
-//        - flat heap after churn;
+//        - flat heap after churn and after editor create→use→destroy ×100;
 //        - <10% run-to-run variance on the gated SVG metric (the acceptance
 //          line's "else fix the harness first" guard). Non-gated configs
 //          report their CV but don't fail the job.
@@ -24,7 +24,21 @@ const INITIAL_RENDER_BUDGET_MS = 500;
 const HEAP_GROWTH_BUDGET_PCT = 10;
 const MAX_CV = 0.1; // run-to-run coefficient of variation
 
-const EXPECTED = ['svg 500x2000', 'canvas 500x2000', 'canvas 5000x20000', 'heap'];
+const EXPECTED = [
+  'svg 500x2000',
+  'canvas 500x2000',
+  'canvas 5000x20000',
+  'heap',
+  'lifecycle-svg',
+  'lifecycle-canvas',
+];
+
+// Heap-style metrics carry a growthPct; the rest carry latency samples.
+const isHeap = (r) => typeof r?.growthPct === 'number';
+const heapLabel = (label, r) =>
+  label === 'heap'
+    ? `heap growth / ${r.churnCycles} churn cycles`
+    : `heap growth / ${r.iterations}× ${label.replace('lifecycle-', '')} create→destroy`;
 
 const round = (x) => Math.round(x * 100) / 100;
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -44,8 +58,8 @@ if (missing.length > 0) {
 // ---- 1. trend file -----------------------------------------------------
 const trend = [];
 for (const [label, r] of Object.entries(metrics)) {
-  if (label === 'heap') {
-    trend.push({ name: `heap growth / ${r.churnCycles} churn cycles`, unit: '%', value: round(r.growthPct) });
+  if (isHeap(r)) {
+    trend.push({ name: heapLabel(label, r), unit: '%', value: round(r.growthPct) });
     continue;
   }
   trend.push(
@@ -63,8 +77,8 @@ const budgetFailures = [];
 const varianceFailures = [];
 
 for (const [label, r] of Object.entries(metrics)) {
-  if (label === 'heap') {
-    const line = `${label}: +${round(r.growthPct)}% over ${r.churnCycles} cycles (budget <${HEAP_GROWTH_BUDGET_PCT}%)`;
+  if (isHeap(r)) {
+    const line = `${heapLabel(label, r)}: +${round(r.growthPct)}% (budget <${HEAP_GROWTH_BUDGET_PCT}%)`;
     if (r.growthPct >= HEAP_GROWTH_BUDGET_PCT) budgetFailures.push(line);
     console.log(line);
     continue;
