@@ -7,13 +7,21 @@ import { join } from 'node:path';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const pkgsDir = join(root, 'packages');
-const dirs = readdirSync(pkgsDir).filter((d) =>
-  existsSync(join(pkgsDir, d, 'package.json')),
-);
+
+// Every publishable package: packages/* plus the nested packages/plugins/*.
+const pkgPaths = [];
+for (const d of readdirSync(pkgsDir)) {
+  const dir = join(pkgsDir, d);
+  if (existsSync(join(dir, 'package.json'))) pkgPaths.push(dir);
+  else if (d === 'plugins') {
+    for (const p of readdirSync(dir)) {
+      if (existsSync(join(dir, p, 'package.json'))) pkgPaths.push(join(dir, p));
+    }
+  }
+}
 
 let failed = false;
-for (const dir of dirs) {
-  const pkgPath = join(pkgsDir, dir);
+for (const pkgPath of pkgPaths) {
   for (const cmd of [
     `pnpm exec publint "${pkgPath}"`,
     `pnpm exec attw --pack "${pkgPath}" --profile esm-only`,

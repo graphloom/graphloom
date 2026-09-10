@@ -277,6 +277,15 @@ importers:
         specifier: workspace:*
         version: link:../history
 
+  packages/plugins/minimap:
+    dependencies:
+      '@graphloom/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@graphloom/rendering':
+        specifier: workspace:*
+        version: link:../../rendering
+
   packages/react:
     dependencies:
       '@graphloom/clipboard':

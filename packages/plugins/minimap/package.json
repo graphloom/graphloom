@@ -1,0 +1,35 @@
+{
+  "name": "@graphloom/minimap",
+  "version": "0.0.1",
+  "description": "GraphLoom minimap plugin — a second renderer over the same scene (ADR-0002)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/graphloom/graphloom.git",
+    "directory": "packages/plugins/minimap"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run --coverage",
+    "lint": "eslint src",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@graphloom/core": "workspace:*",
+    "@graphloom/rendering": "workspace:*"
+  }
+}
