@@ -9,6 +9,7 @@ import {
   createLayoutTransition,
   createSvgRenderer,
   edgeAnchor,
+  exportPng,
   exportSvg,
   mountRenderer,
   rotatedRectCorners,
@@ -72,6 +73,7 @@ app.innerHTML = `
     </label>
     <label><input type="checkbox" data-testid="minimap-toggle" checked /> minimap</label>
     <button data-testid="export-svg" type="button">Export SVG</button>
+    <button data-testid="export-png" type="button">Export PNG</button>
     <span style="color:#8892a6">double-click: add node · drag port: connect · right-click: menu</span>
   </header>
   <div id="stage">
@@ -146,6 +148,21 @@ document.querySelector('[data-testid="renderer"]')!.addEventListener('change', (
 document.querySelector('[data-testid="export-svg"]')!.addEventListener('click', () => {
   const svg = exportSvg(editor);
   window.open(URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), '_blank');
+});
+
+// P10-T04 close-out: a real consumer of exportPng — downloads each returned
+// tile (almost always exactly one; multiple only past maxTileSize). A
+// generic loop rather than a single/multi-file branch, since the caller
+// contract is "however many tiles you get back" either way.
+document.querySelector('[data-testid="export-png"]')!.addEventListener('click', () => {
+  void exportPng(editor).then((tiles) => {
+    tiles.forEach((tile, i) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(tile.blob);
+      a.download = tiles.length > 1 ? `graph-${i}.png` : 'graph.png';
+      a.click();
+    });
+  });
 });
 
 const engine = new InteractionEngine(
