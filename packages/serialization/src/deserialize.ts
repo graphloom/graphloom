@@ -16,10 +16,10 @@ import { canonicalDocument } from './canonical.js';
 import {
   DEFAULT_GENERATOR,
   DEFAULT_VIEWPORT,
-  FORMAT_VERSION,
   SerializationError,
   type GraphDocument,
 } from './document.js';
+import { migrationPipeline } from './migrations.js';
 
 // ---- primitive assertions (each carries the JSON path to the bad field) ----
 
@@ -238,13 +238,13 @@ export function deserialize(input: string | unknown): GraphDocument {
     }
   }
 
-  const root = obj(raw, '$');
+  const declared = obj(raw, '$');
+  const declaredVersion = str(declared['graphloom'], 'graphloom');
+  // Migrate the raw envelope forward to FORMAT_VERSION *before* validating its
+  // shape — an older document's shape is exactly what a migration step exists
+  // to change, so today's ENVELOPE_KEYS must not be applied to it.
+  const { doc: root, version } = migrationPipeline.migrate(declared, declaredVersion);
   noExtraKeys(root, ENVELOPE_KEYS, '$');
-
-  const version = str(root['graphloom'], 'graphloom');
-  if (version !== FORMAT_VERSION) {
-    fail('graphloom', `unsupported format version ${version}; expected ${FORMAT_VERSION}`);
-  }
 
   const graph = obj(root['graph'], 'graph');
   noExtraKeys(graph, GRAPH_KEYS, 'graph');
