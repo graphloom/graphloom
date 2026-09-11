@@ -103,6 +103,7 @@ export {
 } from './svg.js';
 export { createCanvasRenderer, type CanvasRendererOptions } from './canvas.js';
 export { exportSvg, type SvgExportOptions } from './svg-export.js';
+export { exportPng, type PngExportOptions, type PngTile } from './png-export.js';
 export { mountRenderer, type MountOptions, type RenderHost } from './host.js';
 export {
   rendererConformanceChecks,
