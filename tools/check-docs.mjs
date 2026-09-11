@@ -10,6 +10,7 @@ const PACKAGES = [
   'packages/core/src',
   'packages/history/src',
   'packages/rendering/src',
+  'packages/serialization/src',
   'packages/plugins/minimap/src',
 ];
 const DECL = /^export\s+(?:abstract\s+)?(?:const|function|class|interface|enum|type)\s+\w+/;

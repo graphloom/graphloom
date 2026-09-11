@@ -322,7 +322,11 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
 
-  packages/serialization: {}
+  packages/serialization:
+    dependencies:
+      '@graphloom/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/themes:
     dependencies:
