@@ -9,6 +9,7 @@ import {
   createLayoutTransition,
   createSvgRenderer,
   edgeAnchor,
+  exportSvg,
   mountRenderer,
   rotatedRectCorners,
   type Rect,
@@ -70,6 +71,7 @@ app.innerHTML = `
       </select>
     </label>
     <label><input type="checkbox" data-testid="minimap-toggle" checked /> minimap</label>
+    <button data-testid="export-svg" type="button">Export SVG</button>
     <span style="color:#8892a6">double-click: add node · drag port: connect · right-click: menu</span>
   </header>
   <div id="stage">
@@ -134,6 +136,16 @@ const host = mountRenderer(editor, createSvgRenderer(), canvas);
 document.querySelector('[data-testid="renderer"]')!.addEventListener('change', (e) => {
   const next = (e.target as HTMLSelectElement).value;
   host.setRenderer(next === 'canvas' ? createCanvasRenderer() : createSvgRenderer());
+});
+
+// P10-T03 close-out: a real consumer of exportSvg — opens the standalone
+// document in a fresh tab, which is as literally "a plain browser tab" (zero
+// app CSS/JS reaches it) as a same-origin popup can be. The blob URL is only
+// ever read by that tab, then abandoned to the browser's own GC (no
+// createObjectURL/revokeObjectURL bookkeeping needed for a one-shot open).
+document.querySelector('[data-testid="export-svg"]')!.addEventListener('click', () => {
+  const svg = exportSvg(editor);
+  window.open(URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })), '_blank');
 });
 
 const engine = new InteractionEngine(
