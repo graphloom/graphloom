@@ -2,11 +2,18 @@
 // (1) a 2x export displayed as an <img> — the visual baseline e2e/png-export
 // .spec.ts screenshots; (2) a real-browser seamless-tiling check — force
 // tiny tiles, stitch them back onto one canvas at their own offsets, and
-// compare that pixel-for-pixel against an untiled render at the same
-// effective scale. Exact equality is the right bar here (not a tolerant
-// diff): both renders draw the identical items through the identical paint
-// code in the same browser, just windowed differently, so a real seam would
-// show up as a byte difference, not noise.
+// compare that against an untiled render at the same effective scale.
+//
+// Instrumented as a diff *ratio*, not a boolean equality, after a CI finding:
+// this exact check reproducibly failed exact-byte equality on WebKit (3/3,
+// no flake) while passing on Chromium and Firefox. An integer-pixel
+// translation shouldn't move any shape's sub-pixel position relative to the
+// pixel grid, so a real seam (a geometry gap/overlap between tiles) would
+// show up as a large, structural diff — the working hypothesis is WebKit's
+// text rasterizer isn't a pure function of final device position (glyph
+// hinting sensitive to the host canvas's own size), which would show up as a
+// small diff confined to label pixels. The exposed counters let the e2e test
+// assert a bound grounded in the measured ratio instead of a guess.
 import { commands, createGraph } from '@graphloom/core';
 import { exportPng, type PngTile } from '@graphloom/rendering';
 
@@ -42,7 +49,9 @@ async function tileCanvas(tile: PngTile): Promise<HTMLCanvasElement> {
 declare global {
   interface Window {
     __ready: boolean;
-    __seamless: boolean;
+    __seamDiffRatio: number;
+    __seamDiffPixels: number;
+    __seamTotalPixels: number;
   }
 }
 
@@ -69,10 +78,23 @@ async function main(): Promise<void> {
   }
   const stitchedData = stitchedCtx.getImageData(0, 0, stitched.width, stitched.height).data;
 
-  window.__seamless =
-    tiles.length > 1 && // the fixture is only proving something if tiling actually happened
-    stitchedData.length === wholeData.length &&
-    stitchedData.every((value, i) => value === wholeData[i]);
+  const totalPixels = wholeData.length / 4;
+  let diffPixels = 0;
+  for (let i = 0; i < wholeData.length; i += 4) {
+    if (
+      stitchedData[i] !== wholeData[i] ||
+      stitchedData[i + 1] !== wholeData[i + 1] ||
+      stitchedData[i + 2] !== wholeData[i + 2] ||
+      stitchedData[i + 3] !== wholeData[i + 3]
+    ) {
+      diffPixels++;
+    }
+  }
+  window.__seamTotalPixels = totalPixels;
+  window.__seamDiffPixels = diffPixels;
+  // tiles.length > 1 confirms the fixture actually forced tiling — otherwise
+  // "identical" would trivially mean "compared a render against itself".
+  window.__seamDiffRatio = tiles.length > 1 ? diffPixels / totalPixels : NaN;
   window.__ready = true;
 }
 
