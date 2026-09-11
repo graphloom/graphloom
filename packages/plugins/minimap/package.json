@@ -1,6 +1,6 @@
 {
   "name": "@graphloom/minimap",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "GraphLoom minimap plugin — a second renderer over the same scene (ADR-0002)",
   "license": "MIT",
   "repository": {
