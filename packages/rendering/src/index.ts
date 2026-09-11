@@ -102,6 +102,7 @@ export {
   type SvgRendererOptions,
 } from './svg.js';
 export { createCanvasRenderer, type CanvasRendererOptions } from './canvas.js';
+export { exportSvg, type SvgExportOptions } from './svg-export.js';
 export { mountRenderer, type MountOptions, type RenderHost } from './host.js';
 export {
   rendererConformanceChecks,
